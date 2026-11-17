@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_KEY, SUPABASE_URL, isConfigured } from "@/lib/supabase/env";
 
-const PUBLIC_PATHS = ["/login", "/configurare"];
+const PUBLIC_PATHS = ["/login", "/configurare", "/creare-cont-dyas-7k2m", "/api/push"];
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -32,9 +32,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   if (data.user && path === "/login") return NextResponse.redirect(new URL("/", request.url));
+  // Pagina principală pentru vizitatori = autentificarea
+  if (!data.user && path === "/") return NextResponse.redirect(new URL("/login", request.url));
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|.*\\.(?:png|jpg|svg|ico)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|sw.js|manifest.webmanifest|.*\\.(?:png|jpg|svg|ico|js)$).*)"],
 };

@@ -4,8 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "DYASPlanning",
   description: "Planificarea echipelor și pontaj pentru firme de construcții",
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
   manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "DYASPlanning", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

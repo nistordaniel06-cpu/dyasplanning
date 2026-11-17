@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { loadEmployees, loadTeams } from "@/lib/data";
 import { ROLE_LABEL } from "@/lib/labels";
+import { displayLogin } from "@/lib/phone";
 import { TIMEZONES, localDate } from "@/lib/time";
 import type { AppRole, CompanyUser, Invite } from "@/lib/types";
 
@@ -109,7 +110,7 @@ function Setari() {
                 <li key={u.user_id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold">{u.display_name ?? "—"}{u.user_id === user.id && <span className="ml-1 text-xs text-slate-500">(tu)</span>}</div>
-                    <div className="truncate text-xs text-slate-500">{u.email}{u.employee_id ? "" : " · nelegat de un angajat"}</div>
+                    <div className="truncate text-xs text-slate-500">{displayLogin(u.email)}{u.employee_id ? "" : " · nelegat de un angajat"}</div>
                   </div>
                   {u.user_id === user.id ? <Badge tone="orange">{ROLE_LABEL[u.role]}</Badge> : (
                     <div className="flex gap-2">
@@ -126,7 +127,7 @@ function Setari() {
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-slate-500">Pentru a da acces unui angajat, deschide fișa lui din „Angajați” și apasă „Invită în aplicație”.</p>
+            <p className="mt-2 text-xs text-slate-500">Pentru a da acces unui angajat, deschide fișa lui din „Angajați” și apasă „Acces în aplicație”: primește un cod pe WhatsApp și intră cu numărul de telefon.</p>
           </Card>
 
           <Card title="Invitații active">

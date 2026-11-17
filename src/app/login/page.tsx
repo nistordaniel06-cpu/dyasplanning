@@ -2,35 +2,33 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
-import { Button, ErrorBox, Field, Input, Notice, Tabs } from "@/components/ui";
+import { looksLikeEmail, phoneLoginEmail } from "@/lib/phone";
+import { Button, ErrorBox, Field, Input } from "@/components/ui";
 
+/** Pagina principală: doar autentificare. Angajații intră cu telefonul și codul primit de la administrator. */
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [login, setLogin] = useState("");
+  const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const isEmail = looksLikeEmail(login);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setError(null); setInfo(null);
-    const sb = supabase();
+    setBusy(true); setError(null);
     try {
-      if (mode === "login") {
-        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
-        if (error) throw error;
-        const next = new URLSearchParams(window.location.search).get("next");
-        window.location.href = next && next.startsWith("/") ? next : "/";
-      } else {
-        const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: `${window.location.origin}/` } });
-        if (error) throw error;
-        if (data.session) window.location.href = "/onboarding";
-        else setInfo("Cont creat. Ți-am trimis un email de confirmare — deschide linkul, apoi autentifică-te aici.");
+      const email = isEmail ? login.trim() : phoneLoginEmail(login);
+      const { error } = await supabase().auth.signInWithPassword({ email, password: secret.trim() });
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          throw new Error(isEmail ? "Email sau parolă greșită." : "Număr de telefon sau cod greșit. Verifică mesajul primit de la administrator.");
+        }
+        throw error;
       }
+      const next = new URLSearchParams(window.location.search).get("next");
+      window.location.href = next && next.startsWith("/") ? next : "/";
     } catch (err) {
       setError(humanError(err));
-    } finally {
       setBusy(false);
     }
   }
@@ -39,32 +37,25 @@ export default function LoginPage() {
     <main className="flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
-          <img src="/icon.svg" alt="" className="h-11 w-11" />
+          <img src="/icon.svg" alt="" className="h-12 w-12" />
           <div>
-            <div className="text-xl font-bold">DYASPlanning</div>
+            <div className="text-2xl font-bold">DYASPlanning</div>
             <div className="text-sm text-slate-600">Planning și pontaj pentru șantier</div>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <Tabs value={mode} onChange={(v) => { setMode(v); setError(null); setInfo(null); }}
-            items={[{ value: "login", label: "Autentificare" }, { value: "signup", label: "Cont nou" }]} />
-          <form onSubmit={submit} className="mt-5 space-y-4">
-            <Field label="Email"><Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-            <Field label="Parolă" hint={mode === "signup" ? "Minim 6 caractere." : undefined}>
-              <Input type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-            </Field>
-            {error && <ErrorBox message={error} />}
-            {info && <Notice tone="green">{info}</Notice>}
-            <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy}>
-              {mode === "login" ? "Intră în cont" : "Creează cont"}
-            </Button>
-          </form>
-          {mode === "signup" && (
-            <p className="mt-4 text-xs text-slate-600">
-              După creare poți înființa firma (devii administrator) sau te poți alătura unei firme cu un cod de invitație primit de la administrator.
-            </p>
-          )}
-        </div>
+        <form onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h1 className="text-lg font-semibold">Autentificare</h1>
+          <Field label="Număr de telefon" hint={isEmail ? "Autentificare cu email (administrator)." : "Numărul tău de WhatsApp, ex. 0722 123 456."}>
+            <Input autoComplete="username" inputMode={isEmail ? "email" : "tel"} required value={login} onChange={(e) => setLogin(e.target.value)} placeholder="07xx xxx xxx" />
+          </Field>
+          <Field label={isEmail ? "Parolă" : "Cod de acces"} hint={isEmail ? undefined : "Codul de 6 cifre primit de la administrator."}>
+            <Input type="password" autoComplete="current-password" inputMode={isEmail ? "text" : "numeric"} required value={secret} onChange={(e) => setSecret(e.target.value)}
+              className={isEmail ? "" : "tracking-[0.4em]"} />
+          </Field>
+          {error && <ErrorBox message={error} />}
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy}>Intră în aplicație</Button>
+          <p className="text-center text-xs text-slate-500">Nu ai cod? Cere-l administratorului firmei.</p>
+        </form>
       </div>
     </main>
   );

@@ -9,7 +9,11 @@ Răspunde rapid la întrebările: **cine lucrează azi, la ce lucrare și adres�
 
 ## Ce conține prima versiune
 
-- Conturi, firme izolate între ele, roluri (administrator, șef de echipă, angajat), invitații prin cod
+- Pagina principală = doar autentificare. Angajații intră cu **numărul de telefon + un cod de 6 cifre** generat de administrator (trimis pe WhatsApp). Contul de administrator se creează pe o adresă ascunsă: `/creare-cont-dyas-7k2m`
+- Firme izolate între ele, roluri (administrator, șef de echipă, angajat)
+- **Notificări** (în aplicație și push pe telefon) la program nou / modificat / anulat și la pontaj respins
+- **Chat**: toată firma, câte un grup pe lucrare, mesaje private
+- Se instalează pe telefon ca aplicație (PWA)
 - Angajați (inclusiv **fără cont**), echipe, concedii și absențe
 - Lucrări cu misiuni, progres, observații și buton de navigație
 - Planning pe zi, săptămână și lună. Pe desktop: drag-and-drop. Pe telefon: agendă, cu editare prin atingere
@@ -34,15 +38,17 @@ Răspunde rapid la întrebările: **cine lucrează azi, la ce lucrare și adres�
 3. La **Environment Variables** adaugă:
    - `NEXT_PUBLIC_SUPABASE_URL` = Project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = cheia anon / publishable
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` = chei pentru notificări push (`npx web-push generate-vapid-keys`)
+   - `PUSH_SECRET` = un secret lung, același cu `push_secret` din tabelul `app_config` (împreună cu `push_url` = `https://<site>/api/push`); extensia `pg_net` trebuie activată
 4. **Deploy**.
 5. Înapoi în Supabase: **Authentication → URL Configuration → Site URL** = adresa Vercel (ex. `https://dyasplanning.vercel.app`).
 
 ### 3. Prima utilizare
-1. Deschide aplicația → **Cont nou** → **Înființez firma**. Devii administrator.
+1. Deschide `https://<site>/creare-cont-dyas-7k2m` → creează contul → **Înființez firma**. Devii administrator.
 2. **Angajați → Adaugă angajat** (pentru cei fără telefon nu e nevoie de cont).
 3. **Lucrări → Adaugă lucrare** → adaugă misiunile.
 4. **Planning → Alocă angajați**.
-5. Pentru ca un angajat să intre în aplicație: fișa lui → **Invită în aplicație** → trimite codul pe WhatsApp. Angajatul își face cont și introduce codul.
+5. Pentru ca un angajat să intre în aplicație: fișa lui → **Acces în aplicație** → **Trimite pe WhatsApp**. Angajatul intră cu numărul de telefon și codul primit.
 
 ## Dezvoltare locală
 

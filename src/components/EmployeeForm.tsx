@@ -43,7 +43,7 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
       <form id="emp-form" onSubmit={save} className="space-y-4">
         <Field label="Nume și prenume"><Input required value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Telefon"><Input type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+          <Field label="Telefon (WhatsApp)" hint="Cu acest număr intră în aplicație. Din afara României: cu prefix, ex. +31…"><Input type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
           <Field label="Meserie"><Input value={f.trade} onChange={(e) => setF({ ...f, trade: e.target.value })} placeholder="ex. Electrician" /></Field>
         </div>
         <Field label="Competențe" hint="Separate prin virgulă, ex. rigips, gresie, zugrăveli"><Input value={f.skills} onChange={(e) => setF({ ...f, skills: e.target.value })} /></Field>

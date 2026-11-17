@@ -65,7 +65,7 @@ function Angajati() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="font-semibold">{e.full_name}</span>
                   {!e.active && <Badge tone="gray">Inactiv</Badge>}
-                  {!e.user_id && <Badge tone="gray">Fără cont</Badge>}
+                  {!e.user_id && <Badge tone="gray">Fără acces</Badge>}
                   {e.is_driver && <Badge tone="orange">Șofer</Badge>}
                 </div>
                 <div className="text-sm text-slate-600">{e.trade ?? "—"}{e.team_id ? ` · ${teams.get(e.team_id)?.name}` : ""}</div>

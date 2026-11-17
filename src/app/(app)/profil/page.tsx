@@ -1,10 +1,12 @@
 "use client";
 import { LogOut } from "lucide-react";
 import { Button, Card, ErrorBox, Loading, PageHeader } from "@/components/ui";
+import { AppSetupCard } from "@/components/AppSetup";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { loadTeams, loadTimeEntries } from "@/lib/data";
 import { ROLE_LABEL } from "@/lib/labels";
+import { displayLogin } from "@/lib/phone";
 import { formatMinutes } from "@/lib/hours";
 import { addDays, endOfMonth, inRange, rangeUtc, startOfMonth, startOfWeek, todayIn, WEEKDAY_SHORT } from "@/lib/time";
 
@@ -31,10 +33,11 @@ export default function ProfilPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHeader title="Profil" />
+      <AppSetupCard />
       <Card title="Datele mele">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
           <dt className="text-slate-500">Nume</dt><dd className="font-semibold">{employee?.full_name ?? "—"}</dd>
-          <dt className="text-slate-500">Email</dt><dd>{user.email}</dd>
+          <dt className="text-slate-500">Cont</dt><dd>{displayLogin(user.email)}</dd>
           <dt className="text-slate-500">Rol</dt><dd>{role ? ROLE_LABEL[role] : "—"}</dd>
           <dt className="text-slate-500">Firmă</dt><dd>{company?.name}</dd>
           {employee && <>

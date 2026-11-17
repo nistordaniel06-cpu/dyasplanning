@@ -6,6 +6,7 @@ import { NeedsEmployee } from "@/components/shell";
 import { Badge, Button, Empty, ErrorBox, Loading, PageHeader, ProgressBar, StatusBadge } from "@/components/ui";
 import { TaskProgressDialog } from "@/components/TaskProgressDialog";
 import { OdometerCard } from "@/components/OdometerCard";
+import { AppSetupCard } from "@/components/AppSetup";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { byId, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTimeEntries } from "@/lib/data";
@@ -41,6 +42,7 @@ function Astazi() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title={`Bună, ${employee!.full_name.split(" ")[0]}!`} subtitle={prettyDate(today)} />
+      <AppSetupCard compact />
       <OdometerCard />
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}
       {q.loading && !d && <Loading />}

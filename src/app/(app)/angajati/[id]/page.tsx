@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { byId, loadProjects, loadTasks, loadTeams, loadVehicles } from "@/lib/data";
 import { ABSENCE_TYPE, ROLE_LABEL } from "@/lib/labels";
+import { whatsappLink } from "@/lib/phone";
 import { formatMinutes } from "@/lib/hours";
 import { plannedMinutes } from "@/lib/reports";
 import { addDays, endOfMonth, inRange, localDate, localTime, rangeUtc, shortDate, startOfMonth, startOfWeek, todayIn, WEEKDAY_SHORT } from "@/lib/time";
@@ -82,9 +83,9 @@ function Angajat() {
     <div className="space-y-4">
       <Link href="/angajati" className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"><ArrowLeft className="h-4 w-4" />Angajați</Link>
       <PageHeader title={e.full_name}
-        subtitle={<span className="flex flex-wrap items-center gap-2">{e.trade ?? "—"}{team && <> · {team.name}</>}{!e.active && <Badge tone="gray">Inactiv</Badge>}{e.user_id ? <Badge tone="green">Are cont</Badge> : <Badge tone="gray">Fără cont</Badge>}{e.is_driver && <Badge tone="orange">Șofer</Badge>}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2">{e.trade ?? "—"}{team && <> · {team.name}</>}{!e.active && <Badge tone="gray">Inactiv</Badge>}{e.user_id ? <Badge tone="green">Are acces</Badge> : <Badge tone="gray">Fără acces</Badge>}{e.is_driver && <Badge tone="orange">Șofer</Badge>}</span>}
         actions={<>
-          {!e.user_id && e.active && <Button onClick={() => setInviteOpen(true)}><KeyRound className="h-4 w-4" />Invită în aplicație</Button>}
+          {e.active && <Button onClick={() => setInviteOpen(true)}><KeyRound className="h-4 w-4" />{e.user_id ? "Cod nou de acces" : "Acces în aplicație"}</Button>}
           <Button onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" />Modifică</Button>
         </>} />
       {err && <ErrorBox message={err} />}
@@ -190,28 +191,39 @@ function AbsenceForm({ employee, onClose, onSaved }: { employee: Employee; onClo
 
 function InviteDialog({ employee, onClose }: { employee: Employee; onClose: () => void }) {
   const [role, setRole] = useState<AppRole>("angajat");
-  const [code, setCode] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [res, setRes] = useState<{ code: string; phone: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasAccess = !!employee.user_id;
+
   async function create() {
     setBusy(true); setError(null);
-    const { data, error } = await supabase().rpc("create_invite", { p_employee_id: employee.id, p_role: role });
+    const { data, error } = await supabase().rpc("grant_phone_access", { p_employee_id: employee.id, p_role: role });
     setBusy(false);
     if (error) { setError(humanError(error)); return; }
-    setCode(data as string);
+    setRes(data as { code: string; phone: string });
   }
-  const link = typeof window !== "undefined" ? `${window.location.origin}/login` : "";
-  const message = code ? `Salut ${employee.full_name.split(" ")[0]}! Intră pe ${link}, creează-ți cont, apoi introdu codul de invitație ${code} pentru a vedea programul și a trimite orele lucrate.` : "";
+  const site = typeof window !== "undefined" ? window.location.origin : "";
+  const message = res
+    ? `Salut ${employee.full_name.split(" ")[0]}! Programul tău de lucru e în aplicația DYASPlanning.\n\n1. Deschide: ${site}\n2. Număr de telefon: ${res.phone}\n3. Cod de acces: ${res.code}\n\nDupă ce intri, apasă „Instalează aplicația” ca s-o ai pe ecranul telefonului și să primești notificări.`
+    : "";
+
   return (
-    <Modal open onClose={onClose} title="Invită în aplicație" footer={code ? <Button variant="primary" onClick={onClose}>Gata</Button> : <><Button onClick={onClose}>Renunță</Button><Button variant="primary" onClick={create} loading={busy}>Generează cod</Button></>}>
+    <Modal open onClose={onClose} title={hasAccess ? "Cod nou de acces" : "Acces în aplicație"}
+      footer={res ? <Button variant="primary" onClick={onClose}>Gata</Button> : <><Button onClick={onClose}>Renunță</Button><Button variant="primary" onClick={create} loading={busy} disabled={!employee.phone}>Generează codul</Button></>}>
       <div className="space-y-4">
-        {!code ? (
+        {!res ? (
           <>
-            <p className="text-sm text-slate-700">{employee.full_name} își va crea un cont și va introduce codul. Contul va fi legat automat de această fișă.</p>
+            <p className="text-sm text-slate-700">
+              {employee.full_name} intră în aplicație cu <strong>numărul de telefon</strong> și un <strong>cod de 6 cifre</strong>, fără email și parolă.
+              {hasAccess && " Codul vechi nu va mai funcționa."}
+            </p>
+            {employee.phone ? <Notice tone="blue">Telefon: <strong>{employee.phone}</strong></Notice>
+              : <Notice tone="red">Angajatul nu are număr de telefon. Adaugă-l din „Modifică” (pentru numere din afara României, cu prefix, ex. +31 6 1234 5678).</Notice>}
             <Field label="Rol în aplicație">
               <Select value={role} onChange={(e) => setRole(e.target.value as AppRole)}>
-                <option value="angajat">Angajat — își vede programul și trimite orele</option>
+                <option value="angajat">Angajat — își vede programul, trimite orele, chat</option>
                 <option value="sef_echipa">Șef de echipă — vede echipa, actualizează progresul</option>
                 <option value="admin">Administrator — acces complet</option>
               </Select>
@@ -219,13 +231,16 @@ function InviteDialog({ employee, onClose }: { employee: Employee; onClose: () =
           </>
         ) : (
           <>
-            <div className="rounded-xl bg-slate-900 p-5 text-center font-mono text-3xl font-bold tracking-[0.3em] text-white">{code}</div>
-            <p className="text-sm text-slate-600">Codul este valabil 14 zile și poate fi folosit o singură dată.</p>
+            <div className="rounded-xl bg-slate-900 p-5 text-center text-white">
+              <div className="text-sm text-slate-300">Telefon: {res.phone}</div>
+              <div className="mt-1 font-mono text-4xl font-bold tracking-[0.3em]">{res.code}</div>
+            </div>
+            <p className="text-sm text-slate-600">Codul nu expiră. Dacă angajatul îl pierde, generezi altul de aici.</p>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <a className="flex-1" href={`https://wa.me/${(employee.phone ?? "").replace(/[^\d]/g, "").replace(/^0/, "40")}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">
-                <Button className="w-full" disabled={!employee.phone}>Trimite pe WhatsApp</Button>
+              <a className="flex-1" href={whatsappLink(res.phone, message)} target="_blank" rel="noreferrer">
+                <Button variant="primary" className="w-full">Trimite pe WhatsApp</Button>
               </a>
-              <Button className="flex-1" onClick={async () => { try { await navigator.clipboard.writeText(message); setCopied(true); } catch { setError("Nu s-a putut copia automat. Selectează codul și copiază-l manual."); } }}>{copied ? "Copiat ✓" : "Copiază mesajul"}</Button>
+              <Button className="flex-1" onClick={async () => { try { await navigator.clipboard.writeText(message); setCopied(true); } catch { setError("Nu s-a putut copia automat."); } }}>{copied ? "Copiat ✓" : "Copiază mesajul"}</Button>
             </div>
           </>
         )}

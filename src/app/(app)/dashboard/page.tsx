@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { Plus } from "lucide-react";
 import { RequireRole } from "@/components/shell";
+import { AppSetupCard } from "@/components/AppSetup";
 import { Badge, Button, Card, ErrorBox, Loading, PageHeader, Stat, StatusBadge } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
@@ -68,6 +69,7 @@ function Dashboard() {
           <Link href="/planning/aloca"><Button variant="primary"><Plus className="h-4 w-4" />Alocă angajați</Button></Link>
         </>} />
 
+      <AppSetupCard compact />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Lucrări active" value={activeProjects.length} sub={`${d.projects.filter((p) => p.status === "planificata").length} planificate`} href="/lucrari" />
         <Stat label="Programați azi" value={scheduledIds.size} sub={`din ${d.employees.length} angajați activi`} href="/planning" />

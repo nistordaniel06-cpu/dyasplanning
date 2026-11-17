@@ -29,7 +29,7 @@ create table if not exists tst.ids (k text primary key, v uuid);
 grant select, insert, update on tst.ids to authenticated;
 create or replace function tst.id(k text) returns uuid language sql stable as $$ select v from tst.ids where ids.k = $1 $$;
 
-insert into auth.users values
+insert into auth.users(id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'admin@firma1.ro'),
   ('00000000-0000-0000-0000-0000000000b1', 'ion@firma1.ro'),
   ('00000000-0000-0000-0000-0000000000b2', 'sef@firma1.ro'),

@@ -12,7 +12,7 @@ select tst.expect_error($$insert into vehicles(company_id, name, plate) values (
 update employees set is_driver = true, default_vehicle_id = tst.id('car') where id = tst.id('mihai');
 select create_invite(tst.id('mihai'), 'angajat') as code \gset inv_
 reset role;
-insert into auth.users values ('00000000-0000-0000-0000-0000000000b3', 'mihai@firma1.ro') on conflict do nothing;
+insert into auth.users(id, email) values ('00000000-0000-0000-0000-0000000000b3', 'mihai@firma1.ro') on conflict do nothing;
 set role authenticated;
 
 -- Citiri istorice (inserate de admin): ieri 100000, alaltăieri 99800

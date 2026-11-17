@@ -175,16 +175,13 @@ async function auth(req, res, url, bearer) {
       if (exists.rowCount) return send(res, 422, { code: 422, error_code: "user_already_exists", msg: "User already registered", message: "User already registered" });
       if ((body.password ?? "").length < 6) return send(res, 422, { code: 422, error_code: "weak_password", msg: "Password should be at least 6 characters.", message: "Password should be at least 6 characters." });
       const id = crypto.randomUUID();
-      const hash = crypto.createHash("sha256").update(body.password).digest("hex");
-      await c.query("insert into auth.users(id, email) values ($1, $2)", [id, body.email.toLowerCase()]);
-      await c.query("insert into auth.passwords(id, hash) values ($1, $2)", [id, hash]);
+      await c.query("insert into auth.users(id, email, encrypted_password, email_confirmed_at) values ($1, $2, extensions.crypt($3, extensions.gen_salt('bf')), now())", [id, body.email.toLowerCase(), body.password]);
       return send(res, 200, session({ id, email: body.email.toLowerCase(), created_at: new Date().toISOString() }));
     }
     if (p === "/token") {
       const gt = url.searchParams.get("grant_type");
       if (gt === "password") {
-        const hash = crypto.createHash("sha256").update(body.password ?? "").digest("hex");
-        const r = await c.query("select u.id, u.email from auth.users u join auth.passwords p on p.id = u.id where lower(u.email) = lower($1) and p.hash = $2", [body.email, hash]);
+        const r = await c.query("select u.id, u.email from auth.users u where lower(u.email) = lower($1) and u.encrypted_password = extensions.crypt($2, u.encrypted_password)", [body.email, body.password ?? ""]);
         if (!r.rowCount) return send(res, 400, { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials", error: "invalid_grant", error_description: "Invalid login credentials" });
         return send(res, 200, session({ ...r.rows[0], created_at: new Date().toISOString() }));
       }

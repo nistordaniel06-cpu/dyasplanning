@@ -139,3 +139,15 @@ describe("km mașini", () => {
     expect(sumBy(res, (x) => x.employee_id).get("ion")).toBe(120);
   });
 });
+
+import { displayLogin, normPhone, phoneLoginEmail } from "./phone";
+describe("telefon", () => {
+  it("normalizează ca în baza de date", () => {
+    expect(normPhone("0722 100 003")).toBe("40722100003");
+    expect(normPhone("+31 6 1234 5678")).toBe("31612345678");
+    expect(normPhone("0031612345678")).toBe("31612345678");
+    expect(phoneLoginEmail("0744-555-666")).toBe("t40744555666@telefon.dyasplanning.app");
+    expect(displayLogin("t40744555666@telefon.dyasplanning.app")).toBe("+40744555666");
+    expect(displayLogin("a@b.ro")).toBe("a@b.ro");
+  });
+});

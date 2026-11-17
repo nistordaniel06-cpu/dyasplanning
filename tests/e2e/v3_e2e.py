@@ -1,0 +1,72 @@
+import re, json, subprocess
+from playwright.sync_api import sync_playwright, expect
+B="http://localhost:3000"; probs=[]
+def ok(m): print("✓", m, flush=True)
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path=__import__("os").environ.get("CHROME", "/usr/bin/google-chrome"), args=["--no-sandbox"])
+    def ctx(w=390,h=844,mobile=True):
+        c=b.new_context(viewport={"width":w,"height":h}, is_mobile=mobile, has_touch=mobile, locale="ro-RO", timezone_id="Europe/Bucharest")
+        pg=c.new_page(); pg.set_default_timeout(15000)
+        pg.on("pageerror", lambda e: probs.append(f"pageerror {e}"))
+        pg.on("console", lambda m: m.type=="error" and not re.search(r"WebSocket|realtime|Failed to load resource", m.text) and probs.append(m.text))
+        return pg
+    a=ctx(1280,860,False)
+    a.goto(B+"/")
+    expect(a).to_have_url(re.compile("/login"))
+    expect(a.get_by_role("heading", name="Autentificare")).to_be_visible()
+    expect(a.get_by_text("Cont nou")).to_have_count(0)
+    a.screenshot(path="shots/50_login.png"); ok("pagina principală = doar autentificare (fără „Cont nou”)")
+    a.goto(B+"/creare-cont-dyas-7k2m")
+    a.get_by_label("Email").fill("patron@firma.ro"); a.get_by_label("Parolă").fill("parola1234"); a.get_by_role("button", name="Creează cont").click()
+    a.wait_for_url(re.compile("/onboarding")); a.get_by_role("tab", name="Înființez firma").click()
+    a.get_by_label("Numele firmei").fill("Construct Test SRL"); a.get_by_label("Numele tău").fill("Dan Patron"); a.get_by_role("button", name="Creează firma").click()
+    a.wait_for_url(re.compile("/dashboard")); ok("pagina ascunsă: cont administrator + firmă")
+    # angajat cu telefon
+    a.goto(B+"/angajati"); a.get_by_role("button", name="Adaugă angajat").first.click()
+    d=a.get_by_role("dialog"); d.get_by_label("Nume și prenume").fill("Ion Pop"); d.get_by_label("Meserie").fill("Rigipsar"); d.get_by_label(re.compile("^Telefon")).fill("0722 111 222")
+    d.get_by_role("button", name="Adaugă angajat").click(); expect(d).to_be_hidden()
+    a.get_by_text("Ion Pop", exact=True).click(); expect(a.get_by_role("heading", name="Ion Pop")).to_be_visible()
+    a.get_by_role("button", name="Acces în aplicație").click(); d=a.get_by_role("dialog"); d.get_by_role("button", name="Generează codul").click()
+    code=d.locator("div.font-mono").inner_text().strip(); assert re.fullmatch(r"\d{6}", code), code
+    href=d.get_by_role("link").filter(has_text="Trimite pe WhatsApp").get_attribute("href"); assert href.startswith("https://wa.me/40722111222?text="), href
+    a.screenshot(path="shots/51_cod_acces.png"); d.get_by_role("button", name="Gata").click()
+    ok(f"cod de acces generat ({code}) + link WhatsApp către 40722111222")
+    # lucrare + alocare azi
+    a.goto(B+"/lucrari?nou=1"); d=a.get_by_role("dialog"); d.get_by_label("Nume lucrare").fill("Apartament Militari"); d.get_by_label("Status").select_option("in_desfasurare")
+    d.get_by_role("button", name="Adaugă lucrare").click(); a.wait_for_url(re.compile("/lucrari/"))
+    a.get_by_role("link", name="Alocă angajați").click(); a.locator("button[aria-pressed]").filter(has_text="Ion Pop").click()
+    a.get_by_role("button", name="Salvează alocările").click(); expect(a.get_by_role("heading", name="Alocări salvate")).to_be_visible()
+    ok("alocare creată pentru Ion")
+    # Ion intră cu telefon + cod
+    i=ctx()
+    i.goto(B+"/login"); i.get_by_label("Număr de telefon").fill("0722 111 222"); i.get_by_label("Cod de acces").fill("000000"); i.get_by_role("button", name="Intră în aplicație").click()
+    expect(i.get_by_text(re.compile("Număr de telefon sau cod greșit"))).to_be_visible(); ok("cod greșit = mesaj clar")
+    i.get_by_label("Cod de acces").fill(code); i.get_by_role("button", name="Intră în aplicație").click()
+    i.wait_for_url(re.compile("/astazi")); expect(i.get_by_text("Apartament Militari").first).to_be_visible()
+    ok("angajatul intră cu numărul de telefon + cod")
+    expect(i.get_by_role("link", name=re.compile("Notificări, 1 necitite"))).to_be_visible()
+    i.screenshot(path="shots/52_ion_astazi.png", full_page=True)
+    i.get_by_role("link", name=re.compile("^Notificări")).click(); expect(i.get_by_text("Program nou")).to_be_visible()
+    expect(i.get_by_text(re.compile("Apartament Militari ·"))).to_be_visible()
+    i.screenshot(path="shots/53_notificari.png", full_page=True); ok("notificare „Program nou” la alocare")
+    # admin modifică → notificare nouă
+    a.goto(B+"/planning"); a.get_by_role("button").filter(has_text="Ion Pop").first.click()
+    d=a.get_by_role("dialog"); d.get_by_label("Până la").fill("17:00"); d.get_by_role("button", name="Salvează").click(); expect(d).to_be_hidden()
+    i.reload(); expect(i.get_by_text("Programul tău s-a schimbat")).to_be_visible(); ok("notificare la modificarea programului")
+    # chat
+    i.goto(B+"/chat"); expect(i.get_by_text("Toată firma")).to_be_visible(); expect(i.get_by_text("Apartament Militari").first).to_be_visible()
+    i.get_by_text("Toată firma").click(); i.get_by_placeholder("Scrie un mesaj…").fill("Bună dimineața! Am ajuns la Militari."); i.get_by_role("button", name="Trimite").click()
+    expect(i.get_by_text("Bună dimineața! Am ajuns la Militari.", exact=True)).to_be_visible(); ok("angajatul scrie în grupul firmei")
+    a.goto(B+"/chat"); a.wait_for_timeout(1000)
+    expect(a.locator("nav").get_by_text("1").first).to_be_visible()
+    a.get_by_text("Toată firma").click(); expect(a.get_by_text("Bună dimineața! Am ajuns la Militari.", exact=True)).to_be_visible()
+    a.get_by_placeholder("Scrie un mesaj…").fill("Perfect, mulțumesc!"); a.get_by_role("button", name="Trimite").click()
+    expect(i.get_by_text("Perfect, mulțumesc!", exact=True)).to_be_visible(timeout=12000); ok("adminul vede mesajul; răspunsul apare la angajat automat")
+    i.screenshot(path="shots/54_chat_ion.png")
+    i.get_by_role("link", name="Înapoi").click(); i.get_by_role("button", name="Mesaj privat").click()
+    i.get_by_role("dialog").get_by_text("Dan Patron").click(); i.get_by_placeholder("Scrie un mesaj…").fill("Pot pleca la 16?"); i.get_by_role("button", name="Trimite").click()
+    expect(i.get_by_text("Pot pleca la 16?", exact=True)).to_be_visible()
+    a.goto(B+"/chat"); expect(a.get_by_text("Ion Pop").first).to_be_visible(); a.get_by_text("Ion Pop").first.click(); expect(a.get_by_text("Pot pleca la 16?", exact=True)).to_be_visible()
+    a.screenshot(path="shots/55_chat_admin.png"); ok("mesaj privat angajat → administrator")
+    i.goto(B+"/creare-cont-dyas-7k2m"); ok("—")
+    print("PROBLEME:", probs or "niciuna"); b.close(); print("V3 E2E COMPLET")
