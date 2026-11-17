@@ -1,4 +1,5 @@
 "use client";
+import { localeTag } from "@/lib/lang";
 import { useMemo, useState } from "react";
 import { AlertTriangle, Download, Pencil, Plus } from "lucide-react";
 import { RequireRole } from "@/components/shell";
@@ -171,7 +172,7 @@ function ReadingsTable({ rows, vehicles, employees, onEdit }: { rows: ReadingWit
                 <td className="whitespace-nowrap px-3 py-2">{shortDate(r.reading_date)}</td>
                 <td className="px-3 py-2">{vehicles.get(r.vehicle_id)?.name} <span className="text-xs text-slate-500">{vehicles.get(r.vehicle_id)?.plate}</span></td>
                 <td className="px-3 py-2">{r.employee_id ? employees.get(r.employee_id)?.full_name : "—"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.km.toLocaleString("ro-RO")}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.km.toLocaleString(localeTag())}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{dist(r)}</td>
                 <td className="px-3 py-2 text-slate-600">{r.note}</td>
                 <td className="px-3 py-2 text-right"><Button size="sm" variant="ghost" onClick={() => onEdit(r)} aria-label="Modifică"><Pencil className="h-4 w-4" /></Button></td>
@@ -187,7 +188,7 @@ function ReadingsTable({ rows, vehicles, employees, onEdit }: { rows: ReadingWit
               <span className="font-semibold">{shortDate(r.reading_date)} · {vehicles.get(r.vehicle_id)?.name}</span>
               <button onClick={() => onEdit(r)} className="rounded p-2 text-slate-500" aria-label="Modifică"><Pencil className="h-4 w-4" /></button>
             </div>
-            <div className="text-sm text-slate-600">{r.employee_id ? employees.get(r.employee_id)?.full_name : "—"} · bord {r.km.toLocaleString("ro-RO")} km</div>
+            <div className="text-sm text-slate-600">{r.employee_id ? employees.get(r.employee_id)?.full_name : "—"} · bord {r.km.toLocaleString(localeTag())} km</div>
             <div className="mt-1 text-sm">Parcurși: {dist(r)}</div>
             {r.note && <div className="mt-1 text-xs text-slate-500">{r.note}</div>}
           </li>

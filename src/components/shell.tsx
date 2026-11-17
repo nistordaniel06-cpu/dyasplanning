@@ -9,6 +9,7 @@ import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
 import { AnnouncementBar } from "./Announcement";
 import { Toasts } from "./Toasts";
+import { LanguageSwitch } from "./LanguageSwitch";
 import { isNativeApp, setScreenSecure, startNativePush } from "@/lib/native";
 import { supabase } from "@/lib/supabase/client";
 import { SessionProvider, useSession } from "@/lib/session";
@@ -148,7 +149,10 @@ function FrameInner({ children }: { children: ReactNode }) {
         <div className="border-t border-slate-200 p-4">
           <div className="truncate text-sm font-semibold">{s.employee?.full_name ?? s.membership?.display_name ?? s.user.email}</div>
           <div className="text-xs text-slate-500">{s.ownerOnly ? "Proprietar" : s.role ? ROLE_LABEL[s.role] : ""}</div>
-          <Button size="sm" variant="ghost" className="mt-2 -ml-3" onClick={s.signOut}><LogOut className="h-4 w-4" /> Ieșire</Button>
+          <div className="mt-2 flex items-center justify-between">
+            <Button size="sm" variant="ghost" className="-ml-3" onClick={s.signOut}><LogOut className="h-4 w-4" /> Ieșire</Button>
+            <LanguageSwitch />
+          </div>
         </div>
       </aside>
 
@@ -158,6 +162,7 @@ function FrameInner({ children }: { children: ReactNode }) {
           <div className="text-sm font-bold leading-tight">DYASPlanning</div>
           <div className="truncate text-[11px] text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
         </div>
+        <LanguageSwitch />
         <BellLink />
       </header>
 
@@ -165,7 +170,7 @@ function FrameInner({ children }: { children: ReactNode }) {
       <Toasts />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${mobileMain.length + (mobileMore.length ? 1 : 0)}, minmax(0, 1fr))` }}>
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${mobileMain.length + (mobileMore.length || s.ownerOnly ? 1 : 0)}, minmax(0, 1fr))` }}>
           {mobileMain.map((n) => (
             <Link key={n.href} href={n.href}
               className={cx("relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold", active(n.href) ? "text-orange-700" : "text-slate-600")}>
@@ -177,6 +182,11 @@ function FrameInner({ children }: { children: ReactNode }) {
             <button onClick={() => setMore(true)}
               className={cx("flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold", mobileMore.some((n) => active(n.href)) ? "text-orange-700" : "text-slate-600")}>
               <Menu className="h-6 w-6" aria-hidden /> Mai mult
+            </button>
+          )}
+          {s.ownerOnly && !mobileMore.length && (
+            <button onClick={s.signOut} className="flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-red-700">
+              <LogOut className="h-6 w-6" aria-hidden /> Ieșire
             </button>
           )}
         </div>

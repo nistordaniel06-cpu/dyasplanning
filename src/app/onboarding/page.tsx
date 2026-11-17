@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { TIMEZONES } from "@/lib/time";
@@ -46,6 +47,7 @@ export default function Onboarding() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
+      <LanguageSwitch className="fixed right-3 top-3 z-50" />
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-xl font-bold">Bun venit în DYASPlanning</h1>
         <p className="mt-1 text-sm text-slate-600">Contul tău nu este încă legat de o firmă.</p>

@@ -1,4 +1,5 @@
 "use client";
+import { localeTag } from "@/lib/lang";
 import { useState } from "react";
 import { Car, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
@@ -57,7 +58,7 @@ export function OdometerCard() {
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-8 w-8 shrink-0 text-green-700" />
             <div className="flex-1">
-              <div className="text-xl font-bold tabular-nums">{done.km.toLocaleString("ro-RO")} km</div>
+              <div className="text-xl font-bold tabular-nums">{done.km.toLocaleString(localeTag())} km</div>
               <div className="text-sm text-slate-600">{done.vehicle_name}{done.plate ? ` · ${done.plate}` : ""} · salvat azi</div>
             </div>
             <Button size="sm" onClick={() => { setEditing(true); setVehicleId(done.vehicle_id); setKm(String(done.km)); }}>Corectează</Button>

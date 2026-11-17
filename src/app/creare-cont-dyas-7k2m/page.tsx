@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { Button, ErrorBox, Field, Input, Notice } from "@/components/ui";
@@ -31,6 +32,7 @@ export default function HiddenSignup() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
+      <LanguageSwitch className="fixed right-3 top-3 z-50" />
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-lg font-semibold">Cont nou de administrator</h1>
         <p className="text-sm text-slate-600">După creare înființezi firma. Angajații nu au nevoie de pagina aceasta: primesc acces cu telefonul și un cod.</p>

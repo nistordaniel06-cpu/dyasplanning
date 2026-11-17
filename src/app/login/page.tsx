@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { setScreenSecure } from "@/lib/native";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
@@ -48,6 +49,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
+      <LanguageSwitch className="fixed right-3 top-3 z-50" />
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
           <img src="/icon.svg" alt="" className="h-12 w-12" />

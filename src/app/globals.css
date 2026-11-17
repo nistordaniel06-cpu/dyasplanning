@@ -7,3 +7,6 @@
 html { -webkit-tap-highlight-color: transparent; }
 body { @apply bg-slate-50 text-slate-900 antialiased; }
 input[type="date"], input[type="time"] { min-height: 2.75rem; }
+
+/* traducere în curs (engleză): pagina rămâne ascunsă câteva milisecunde */
+html.i18n-pending body { visibility: hidden; }

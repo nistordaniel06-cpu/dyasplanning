@@ -13,6 +13,7 @@ import { humanError } from "@/lib/errors";
 import { byId, loadProjects, loadTasks, loadTeams, loadVehicles } from "@/lib/data";
 import { ABSENCE_TYPE, ROLE_LABEL } from "@/lib/labels";
 import { whatsappLink } from "@/lib/phone";
+import { getLang } from "@/lib/lang";
 import { formatMinutes } from "@/lib/hours";
 import { plannedMinutes } from "@/lib/reports";
 import { addDays, endOfMonth, inRange, localDate, localTime, rangeUtc, shortDate, startOfMonth, startOfWeek, todayIn, WEEKDAY_SHORT } from "@/lib/time";
@@ -205,8 +206,11 @@ function InviteDialog({ employee, onClose }: { employee: Employee; onClose: () =
     setRes(data as { code: string; phone: string });
   }
   const site = typeof window !== "undefined" ? window.location.origin : "";
-  const message = res
-    ? `Salut ${employee.full_name.split(" ")[0]}! Programul tău de lucru e în aplicația DYASPlanning.\n\n1. Deschide: ${site}\n2. Număr de telefon: ${res.phone}\n3. Cod de acces: ${res.code}\n\nDupă ce intri, apasă „Instalează aplicația” ca s-o ai pe ecranul telefonului și să primești notificări.`
+  const first = employee.full_name.split(" ")[0];
+  const message = res && getLang() === "en"
+    ? `Hi ${first}! Your work schedule is in the DYASPlanning app.\n\n1. Open: ${site}\n2. Phone number: +${res.phone.replace(/^\+/, "")}\n3. Access code: ${res.code}\n\nAfter you sign in, tap “Install app” to have it on your phone's home screen and get notifications.`
+    : res
+    ? `Salut ${first}! Programul tău de lucru e în aplicația DYASPlanning.\n\n1. Deschide: ${site}\n2. Număr de telefon: ${res.phone}\n3. Cod de acces: ${res.code}\n\nDupă ce intri, apasă „Instalează aplicația” ca s-o ai pe ecranul telefonului și să primești notificări.`
     : "";
 
   return (

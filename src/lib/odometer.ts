@@ -1,3 +1,4 @@
+import { localeTag } from "@/lib/lang";
 import type { OdometerReading } from "./types";
 import { diffDays } from "./time";
 
@@ -40,5 +41,5 @@ export function sumBy<T>(rows: ReadingWithDistance[], key: (r: ReadingWithDistan
 }
 
 export function formatKm(n: number): string {
-  return `${n.toLocaleString("ro-RO")} km`;
+  return `${n.toLocaleString(localeTag())} km`;
 }

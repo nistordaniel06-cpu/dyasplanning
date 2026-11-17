@@ -1,6 +1,7 @@
 // Toate orele se stochează în UTC (timestamptz) și se afișează în fusul orar al firmei.
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
-import { ro } from "date-fns/locale";
+import { enGB, ro } from "date-fns/locale";
+import { getLang } from "./lang";
 
 /** "YYYY-MM-DD" + "HH:mm" interpretate în fusul orar `tz` → Date (UTC). */
 export function zonedToUtc(date: string, time: string, tz: string): Date {
@@ -19,7 +20,7 @@ export function localTime(d: Date | string, tz: string): string {
 }
 
 export function fmt(d: Date | string, tz: string, pattern: string): string {
-  return formatInTimeZone(new Date(d), tz, pattern, { locale: ro });
+  return formatInTimeZone(new Date(d), tz, pattern, { locale: getLang() === "en" ? enGB : ro });
 }
 
 /** Ziua de azi în fusul firmei. */
@@ -111,21 +112,27 @@ export function minutesToHHmm(min: number): string {
 export const WEEKDAY_SHORT = ["", "Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"];
 export const WEEKDAY_LONG = ["", "Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
 
+const EN_WEEKDAY_SHORT = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const EN_WEEKDAY_LONG = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const RO_MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
 export function prettyDate(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
-  const months = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
-  return `${WEEKDAY_LONG[isoWeekday(date)]}, ${d} ${months[m - 1]} ${y}`;
+  if (getLang() === "en") return `${EN_WEEKDAY_LONG[isoWeekday(date)]}, ${d} ${EN_MONTHS[m - 1]} ${y}`;
+  return `${WEEKDAY_LONG[isoWeekday(date)]}, ${d} ${RO_MONTHS[m - 1]} ${y}`;
 }
 
 export function shortDate(date: string): string {
   const [, m, d] = date.split("-").map(Number);
-  return `${WEEKDAY_SHORT[isoWeekday(date)]} ${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}`;
+  const days = getLang() === "en" ? EN_WEEKDAY_SHORT : WEEKDAY_SHORT;
+  return `${days[isoWeekday(date)]} ${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}`;
 }
 
 export function monthLabel(date: string): string {
   const [y, m] = date.split("-").map(Number);
-  const months = ["Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie", "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"];
-  return `${months[m - 1]} ${y}`;
+  const name = getLang() === "en" ? EN_MONTHS[m - 1] : RO_MONTHS[m - 1];
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${y}`;
 }
 
 export const TIMEZONES: { value: string; label: string }[] = [

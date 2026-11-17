@@ -1,4 +1,5 @@
 "use client";
+import { localeTag } from "@/lib/lang";
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, Copy, MapPin, Megaphone, Search } from "lucide-react";
@@ -57,9 +58,9 @@ function ago(iso: string | null): string {
   if (s < 3600) return `acum ${Math.floor(s / 60)} min`;
   if (s < 86400) return `acum ${Math.floor(s / 3600)} h`;
   const d = Math.floor(s / 86400);
-  return d === 1 ? "ieri" : d < 30 ? `acum ${d} zile` : new Date(iso).toLocaleDateString("ro-RO");
+  return d === 1 ? "ieri" : d < 30 ? `acum ${d} zile` : new Date(iso).toLocaleDateString(localeTag());
 }
-const dt = (iso: string) => new Date(iso).toLocaleString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const dt = (iso: string) => new Date(iso).toLocaleString(localeTag(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const today = () => new Date().toISOString().slice(0, 10);
 /** Lunea ultimelor n săptămâni (YYYY-MM-DD), ca în baza de date (date_trunc week, UTC). */
 function lastWeeks(n: number): string[] {
@@ -197,9 +198,9 @@ function CompaniesTab({ onLogins }: { onLogins: (id: string) => void }) {
                   <span className="font-semibold">{c.name}</span>
                   {c.status === "suspendat" ? <Badge tone="red">Suspendată</Badge> : <Badge tone="green">Activă</Badge>}
                   <Badge tone={c.plan === "gratuit" ? "gray" : "blue"}>{PLAN_LABEL[c.plan]}</Badge>
-                  {c.trial_until && <Badge tone={expired ? "red" : "amber"}>{expired ? "Proba a expirat" : `Probă până ${new Date(c.trial_until).toLocaleDateString("ro-RO")}`}</Badge>}
+                  {c.trial_until && <Badge tone={expired ? "red" : "amber"}>{expired ? "Proba a expirat" : `Probă până ${new Date(c.trial_until).toLocaleDateString(localeTag())}`}</Badge>}
                 </div>
-                <div className="mt-1 truncate text-sm text-slate-600">{c.admin_email ?? "fără admin"} · înscrisă {new Date(c.created_at).toLocaleDateString("ro-RO")}</div>
+                <div className="mt-1 truncate text-sm text-slate-600">{c.admin_email ?? "fără admin"} · înscrisă {new Date(c.created_at).toLocaleDateString(localeTag())}</div>
                 <div className="mt-1 text-xs text-slate-500">
                   {c.users} conturi · {c.employees} angajați · {c.projects} lucrări · {c.assignments_7d} alocări / 7 zile · activitate {ago(c.last_sign_in)}
                 </div>
@@ -479,7 +480,7 @@ function AnnouncementsTab() {
             {q.data!.map((a) => (
               <li key={a.id} className="flex justify-between gap-3 py-2">
                 <span className="min-w-0 truncate">{a.title}</span>
-                <span className="shrink-0 text-xs text-slate-500">{new Date(a.created_at).toLocaleDateString("ro-RO")}</span>
+                <span className="shrink-0 text-xs text-slate-500">{new Date(a.created_at).toLocaleDateString(localeTag())}</span>
               </li>
             ))}
           </ul>

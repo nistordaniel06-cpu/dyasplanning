@@ -158,7 +158,7 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
               <div className={cx("flex", mine ? "justify-end" : "justify-start")}>
                 <div className={cx("max-w-[80%] rounded-2xl px-3 py-2 text-[15px] shadow-sm", mine ? "rounded-br-sm bg-orange-600 text-white" : "rounded-bl-sm bg-white text-slate-900 ring-1 ring-slate-200")}>
                   {showAuthor && <div className="mb-0.5 text-xs font-semibold text-orange-700">{m.author_name}</div>}
-                  <div className="whitespace-pre-wrap break-words">{m.body}</div>
+                  <div data-no-i18n className="whitespace-pre-wrap break-words">{m.body}</div>
                   <div className={cx("mt-0.5 text-right text-[10px]", mine ? "text-orange-100" : "text-slate-400")}>{fmt(m.created_at, tz, "HH:mm")}</div>
                 </div>
               </div>
