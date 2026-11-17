@@ -18,12 +18,13 @@ Răspunde rapid la întrebările: **cine lucrează azi, la ce lucrare și adres�
 - Copierea unei zile sau săptămâni, cu previzualizare și verificarea conflictelor
 - Pontaj manual (început, sfârșit, pauze neplătite, ture peste miezul nopții) cu statusurile ciornă / trimis / aprobat / respins, istoric complet și corecții cu motiv
 - Dashboard și rapoarte (planificat vs. aprobat vs. neaprobat), export CSV pentru Excel
+- **Km mașini:** șoferul introduce dimineața km din bord (ecranul „Astăzi”); aplicația calculează a doua zi km parcurși; secțiunea „Mașini” (citiri, totaluri pe mașină și șofer, CSV) e vizibilă doar administratorului
 
 ## Punere în funcțiune (merge integral de pe telefon)
 
 ### 1. Baza de date — Supabase
 1. Creează un proiect pe [supabase.com](https://supabase.com) (regiunea *Central EU (Frankfurt)*).
-2. **SQL Editor → New query** → lipește tot conținutul fișierului [`supabase/schema.sql`](supabase/schema.sql) → **Run**. Scriptul se poate rula din nou fără probleme.
+2. **SQL Editor → New query** → lipește tot conținutul fișierului [`supabase/schema.sql`](supabase/schema.sql) → **Run**. Apoi, la fel, fiecare fișier din [`supabase/migrations/`](supabase/migrations) în ordine (`002_km_masini.sql` …). Scripturile se pot rula din nou fără probleme.
 3. **Authentication → Sign In / Providers → Email**: lasă activat. Pentru teste rapide poți dezactiva *Confirm email*. Pentru utilizare reală, las-o activată.
 4. **Project Settings → API**: copiază *Project URL* și cheia *anon / publishable*.
 

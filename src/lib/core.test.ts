@@ -125,3 +125,17 @@ describe("inRange", () => {
     expect(inRange("2026-11-17T22:00:00.123456+00:00", "2026-11-16T22:00:00.000Z", "2026-11-17T22:00:00.000Z")).toBe(false);
   });
 });
+
+import { withDistances, sumBy } from "./odometer";
+import type { OdometerReading } from "./types";
+describe("km mașini", () => {
+  const r = (v: string, d: string, km: number, e = "mihai"): OdometerReading => ({ id: v + d, company_id: "c", vehicle_id: v, employee_id: e, reading_date: d, km, note: null, created_at: "" });
+  it("calculează km parcurși din citirea următoare, pe fiecare mașină", () => {
+    const res = withDistances([r("car", "2026-11-17", 100245), r("car", "2026-11-15", 99800), r("car", "2026-11-16", 100000), r("van", "2026-11-16", 5000, "ion"), r("van", "2026-11-17", 5120, "ion")]);
+    const car16 = res.find((x) => x.vehicle_id === "car" && x.reading_date === "2026-11-16")!;
+    expect(car16).toMatchObject({ distance: 245, nextDate: "2026-11-17", spanDays: 1 });
+    expect(res.find((x) => x.vehicle_id === "car" && x.reading_date === "2026-11-17")!.distance).toBeNull();
+    expect(sumBy(res, (x) => x.vehicle_id).get("car")).toBe(445);
+    expect(sumBy(res, (x) => x.employee_id).get("ion")).toBe(120);
+  });
+});

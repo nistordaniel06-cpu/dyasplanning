@@ -7,7 +7,7 @@ import { Badge, Button, Empty, ErrorBox, Input, Loading, PageHeader, Select } fr
 import { EmployeeForm } from "@/components/EmployeeForm";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
-import { byId, loadAbsences, loadAssignments, loadEmployees, loadTeams } from "@/lib/data";
+import { byId, loadAbsences, loadAssignments, loadEmployees, loadTeams, loadVehicles } from "@/lib/data";
 import { availabilityFor } from "@/lib/conflicts";
 import { formatMinutes } from "@/lib/hours";
 import { isoWeekday, rangeUtc, todayIn } from "@/lib/time";
@@ -26,8 +26,8 @@ function Angajati() {
 
   const q = useQuery(async () => {
     const [f, t] = rangeUtc(today, today, tz);
-    const [employees, teams, assignments, absences] = await Promise.all([loadEmployees({ includeInactive: true }), loadTeams(), loadAssignments(f, t), loadAbsences(today, today)]);
-    return { employees, teams, assignments, absences };
+    const [employees, teams, assignments, absences, vehicles] = await Promise.all([loadEmployees({ includeInactive: true }), loadTeams(), loadAssignments(f, t), loadAbsences(today, today), loadVehicles()]);
+    return { employees, teams, assignments, absences, vehicles };
   }, [today, tz]);
   const teams = useMemo(() => byId(q.data?.teams), [q.data]);
 
@@ -66,6 +66,7 @@ function Angajati() {
                   <span className="font-semibold">{e.full_name}</span>
                   {!e.active && <Badge tone="gray">Inactiv</Badge>}
                   {!e.user_id && <Badge tone="gray">Fără cont</Badge>}
+                  {e.is_driver && <Badge tone="orange">Șofer</Badge>}
                 </div>
                 <div className="text-sm text-slate-600">{e.trade ?? "—"}{e.team_id ? ` · ${teams.get(e.team_id)?.name}` : ""}</div>
                 {e.phone && <div className="flex items-center gap-1 text-xs text-slate-500"><Phone className="h-3 w-3" />{e.phone}</div>}
@@ -80,7 +81,7 @@ function Angajati() {
           );
         })}
       </div>
-      {formOpen && q.data && <EmployeeForm teams={q.data.teams} onClose={() => setFormOpen(false)} onSaved={async () => { setFormOpen(false); await q.reload(); }} />}
+      {formOpen && q.data && <EmployeeForm teams={q.data.teams} vehicles={q.data.vehicles} onClose={() => setFormOpen(false)} onSaved={async () => { setFormOpen(false); await q.reload(); }} />}
     </div>
   );
 }

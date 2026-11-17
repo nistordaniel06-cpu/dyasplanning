@@ -10,7 +10,7 @@ import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
-import { byId, loadProjects, loadTasks, loadTeams } from "@/lib/data";
+import { byId, loadProjects, loadTasks, loadTeams, loadVehicles } from "@/lib/data";
 import { ABSENCE_TYPE, ROLE_LABEL } from "@/lib/labels";
 import { formatMinutes } from "@/lib/hours";
 import { plannedMinutes } from "@/lib/reports";
@@ -35,17 +35,17 @@ function Angajat() {
     const monthStart = startOfMonth(today) < startOfWeek(today) ? startOfMonth(today) : startOfWeek(today);
     const [f] = rangeUtc(monthStart, today, tz);
     const [, t] = rangeUtc(today, addDays(today, 30), tz);
-    const [emp, absences, assignments, entries, invites, teams, projects, tasks] = await Promise.all([
+    const [emp, absences, assignments, entries, invites, teams, projects, tasks, vehicles] = await Promise.all([
       sb.from("employees").select("*").eq("id", id).maybeSingle(),
       sb.from("absences").select("*").eq("employee_id", id).gte("end_date", addDays(today, -90)).order("start_date"),
       sb.from("assignments").select("*").eq("employee_id", id).gte("starts_at", f).lt("starts_at", t).order("starts_at"),
       sb.from("time_entries").select("*").eq("employee_id", id).gte("started_at", f).order("started_at", { ascending: false }),
       sb.from("invites").select("*").eq("employee_id", id).is("used_at", null).order("created_at", { ascending: false }),
-      loadTeams(), loadProjects(), loadTasks(),
+      loadTeams(), loadProjects(), loadTasks(), loadVehicles(),
     ]);
     return {
       employee: must(emp) as Employee | null, absences: must(absences) as Absence[], assignments: must(assignments) as Assignment[],
-      entries: must(entries) as TimeEntry[], invites: must(invites) as Invite[], teams, projects, tasks,
+      entries: must(entries) as TimeEntry[], invites: must(invites) as Invite[], teams, projects, tasks, vehicles,
     };
   }, [id, today, tz]);
 
@@ -82,7 +82,7 @@ function Angajat() {
     <div className="space-y-4">
       <Link href="/angajati" className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"><ArrowLeft className="h-4 w-4" />Angajați</Link>
       <PageHeader title={e.full_name}
-        subtitle={<span className="flex flex-wrap items-center gap-2">{e.trade ?? "—"}{team && <> · {team.name}</>}{!e.active && <Badge tone="gray">Inactiv</Badge>}{e.user_id ? <Badge tone="green">Are cont</Badge> : <Badge tone="gray">Fără cont</Badge>}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2">{e.trade ?? "—"}{team && <> · {team.name}</>}{!e.active && <Badge tone="gray">Inactiv</Badge>}{e.user_id ? <Badge tone="green">Are cont</Badge> : <Badge tone="gray">Fără cont</Badge>}{e.is_driver && <Badge tone="orange">Șofer</Badge>}</span>}
         actions={<>
           {!e.user_id && e.active && <Button onClick={() => setInviteOpen(true)}><KeyRound className="h-4 w-4" />Invită în aplicație</Button>}
           <Button onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" />Modifică</Button>
@@ -145,7 +145,7 @@ function Angajat() {
         )}
       </Card>
 
-      {editOpen && <EmployeeForm employee={e} teams={d.teams} onClose={() => setEditOpen(false)} onSaved={async () => { setEditOpen(false); await q.reload(); }} />}
+      {editOpen && <EmployeeForm employee={e} teams={d.teams} vehicles={d.vehicles} onClose={() => setEditOpen(false)} onSaved={async () => { setEditOpen(false); await q.reload(); }} />}
       {absOpen && <AbsenceForm employee={e} onClose={() => setAbsOpen(false)} onSaved={async () => { setAbsOpen(false); await q.reload(); }} />}
       {inviteOpen && <InviteDialog employee={e} onClose={() => { setInviteOpen(false); void q.reload(); }} />}
     </div>

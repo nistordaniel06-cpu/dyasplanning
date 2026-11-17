@@ -4,16 +4,17 @@ import { supabase } from "@/lib/supabase/client";
 import { useSession } from "@/lib/session";
 import { humanError } from "@/lib/errors";
 import { WEEKDAY_SHORT } from "@/lib/time";
-import type { Employee, Team } from "@/lib/types";
+import type { Employee, Team, Vehicle } from "@/lib/types";
 import { Button, ErrorBox, Field, Input, Modal, Select, cx } from "./ui";
 
-export function EmployeeForm({ employee, teams, onClose, onSaved }: { employee?: Employee | null; teams: Team[]; onClose: () => void; onSaved: (e: Employee) => void }) {
+export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved }: { employee?: Employee | null; teams: Team[]; vehicles?: Vehicle[]; onClose: () => void; onSaved: (e: Employee) => void }) {
   const { company } = useSession();
   const [f, setF] = useState({
     full_name: employee?.full_name ?? "", phone: employee?.phone ?? "", trade: employee?.trade ?? "",
     skills: (employee?.skills ?? []).join(", "), team_id: employee?.team_id ?? "",
     work_start: employee?.work_start?.slice(0, 5) ?? "08:00", work_end: employee?.work_end?.slice(0, 5) ?? "16:00",
     work_days: employee?.work_days ?? [1, 2, 3, 4, 5], active: employee?.active ?? true,
+    is_driver: employee?.is_driver ?? false, default_vehicle_id: employee?.default_vehicle_id ?? "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export function EmployeeForm({ employee, teams, onClose, onSaved }: { employee?:
       full_name: f.full_name.trim(), phone: f.phone.trim() || null, trade: f.trade.trim() || null,
       skills: f.skills.split(",").map((s) => s.trim()).filter(Boolean), team_id: f.team_id || null,
       work_start: f.work_start, work_end: f.work_end, work_days: [...f.work_days].sort(), active: f.active,
+      is_driver: f.is_driver, default_vehicle_id: f.is_driver && f.default_vehicle_id ? f.default_vehicle_id : null,
     };
     const sb = supabase();
     const res = employee
@@ -63,6 +65,18 @@ export function EmployeeForm({ employee, teams, onClose, onSaved }: { employee?:
             ))}
           </div>
         </Field>
+        <label className="flex items-center gap-3 text-sm font-medium">
+          <input type="checkbox" className="h-5 w-5 accent-orange-600" checked={f.is_driver} onChange={(e) => setF({ ...f, is_driver: e.target.checked })} />
+          Șofer — introduce dimineața km de la bordul mașinii
+        </label>
+        {f.is_driver && (
+          <Field label="Mașina obișnuită" hint={vehicles.length === 0 ? "Adaugă mașini din secțiunea „Mașini”." : "Apare preselectată când șoferul introduce km."}>
+            <Select value={f.default_vehicle_id} onChange={(e) => setF({ ...f, default_vehicle_id: e.target.value })}>
+              <option value="">— alege la fiecare citire —</option>
+              {vehicles.filter((v) => v.active || v.id === f.default_vehicle_id).map((v) => <option key={v.id} value={v.id}>{v.name}{v.plate ? ` · ${v.plate}` : ""}</option>)}
+            </Select>
+          </Field>
+        )}
         {employee && (
           <label className="flex items-center gap-3 text-sm font-medium">
             <input type="checkbox" className="h-5 w-5 accent-orange-600" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} />

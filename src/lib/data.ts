@@ -1,7 +1,7 @@
 "use client";
 import { supabase } from "./supabase/client";
 import { must } from "./useQuery";
-import type { Absence, Assignment, Employee, Project, Task, Team, TimeEntry } from "./types";
+import type { Absence, Assignment, Employee, OdometerReading, Project, Task, Team, TimeEntry, Vehicle } from "./types";
 
 const sb = () => supabase();
 
@@ -48,4 +48,13 @@ export async function loadTimeEntries(fromUtc: string, toUtc: string, filter: { 
 
 export function byId<T extends { id: string }>(rows: T[] | null | undefined): Map<string, T> {
   return new Map((rows ?? []).map((r) => [r.id, r]));
+}
+
+export async function loadVehicles(): Promise<Vehicle[]> {
+  return must(await sb().from("vehicles").select("*").order("name")) as Vehicle[];
+}
+
+/** Citirile de km (doar administratorul le poate citi — RLS). */
+export async function loadOdometer(fromDate: string, toDate: string): Promise<OdometerReading[]> {
+  return must(await sb().from("odometer_readings").select("*").gte("reading_date", fromDate).lte("reading_date", toDate).order("reading_date")) as OdometerReading[];
 }

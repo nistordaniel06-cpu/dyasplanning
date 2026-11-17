@@ -7,7 +7,7 @@ import { Badge, Button, Card, ErrorBox, Loading, PageHeader, Stat, StatusBadge }
 import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
-import { byId, loadAbsences, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTimeEntries } from "@/lib/data";
+import { byId, loadAbsences, loadAssignments, loadEmployees, loadOdometer, loadProjects, loadTasks, loadTimeEntries, loadVehicles } from "@/lib/data";
 import { availabilityFor } from "@/lib/conflicts";
 import { PROJECT_STATUS, ABSENCE_TYPE } from "@/lib/labels";
 import { formatMinutes } from "@/lib/hours";
@@ -27,12 +27,13 @@ function Dashboard() {
   const q = useQuery(async () => {
     const [tf, tt] = rangeUtc(today, today, tz);
     const [wf, wt] = rangeUtc(ws, we, tz);
-    const [employees, projects, tasks, todayAs, weekAs, absences, weekEntries, pending] = await Promise.all([
+    const [employees, projects, tasks, todayAs, weekAs, absences, weekEntries, pending, vehicles, odo] = await Promise.all([
       loadEmployees(), loadProjects(), loadTasks(), loadAssignments(tf, tt), loadAssignments(wf, wt), loadAbsences(today, today),
       loadTimeEntries(wf, wt),
       supabase().from("time_entries").select("*").eq("status", "trimis").order("started_at").then((r) => must(r) as TimeEntry[]),
+      loadVehicles(), loadOdometer(today, today),
     ]);
-    return { employees, projects, tasks, todayAs: todayAs.filter((a) => a.status !== "anulata" && localDate(a.starts_at, tz) === today), weekAs: weekAs.filter((a) => a.status !== "anulata"), absences, weekEntries, pending };
+    return { vehicles: vehicles.filter((v) => v.active), odo, employees, projects, tasks, todayAs: todayAs.filter((a) => a.status !== "anulata" && localDate(a.starts_at, tz) === today), weekAs: weekAs.filter((a) => a.status !== "anulata"), absences, weekEntries, pending };
   }, [today, tz]);
 
   const d = q.data;
@@ -118,6 +119,14 @@ function Dashboard() {
             </div>
             <Link href="/rapoarte" className="mt-3 inline-block text-sm font-semibold text-orange-700">Rapoarte →</Link>
           </Card>
+          {d.vehicles.length > 0 && (
+            <Card title="Km mașini azi" action={<Link href="/masini" className="text-sm font-semibold text-orange-700">Mașini →</Link>}>
+              <p className="text-sm">{d.odo.length} din {d.vehicles.length} mașini au km introduși azi.</p>
+              {d.vehicles.filter((v) => !d.odo.some((r) => r.vehicle_id === v.id)).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">{d.vehicles.filter((v) => !d.odo.some((r) => r.vehicle_id === v.id)).map((v) => <Badge key={v.id} tone="amber">Lipsă: {v.name}</Badge>)}</div>
+              )}
+            </Card>
+          )}
           <Card title="Disponibili / absenți azi">
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap gap-1">{available.length === 0 ? <span className="text-slate-500">Niciun angajat liber.</span> : available.map(({ e }) => <Badge key={e.id} tone="green">{e.full_name}</Badge>)}</div>

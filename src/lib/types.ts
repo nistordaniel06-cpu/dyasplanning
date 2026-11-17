@@ -41,6 +41,28 @@ export interface Employee {
   work_end: string;
   work_days: number[];
   active: boolean;
+  is_driver: boolean;
+  default_vehicle_id: string | null;
+  created_at: string;
+}
+
+export interface Vehicle {
+  id: string;
+  company_id: string;
+  name: string;
+  plate: string | null;
+  active: boolean;
+  created_at: string;
+}
+
+export interface OdometerReading {
+  id: string;
+  company_id: string;
+  vehicle_id: string;
+  employee_id: string | null;
+  reading_date: string;
+  km: number;
+  note: string | null;
   created_at: string;
 }
 
