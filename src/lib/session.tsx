@@ -18,6 +18,8 @@ export interface SessionValue {
   signOut: () => Promise<void>;
   /** Proprietarul platformei (cel care a făcut aplicația) */
   isOwner: boolean;
+  /** Proprietar fără firmă activă: vede doar panoul proprietarului */
+  ownerOnly: boolean;
 }
 
 const Ctx = createContext<SessionValue | null>(null);
@@ -33,7 +35,7 @@ type State =
   | { status: "error"; message: string }
   | { status: "anon" }
   | { status: "suspended" }
-  | { status: "ready"; user: User; membership: Membership | null; company: Company | null; employee: Employee | null; isOwner: boolean };
+  | { status: "ready"; user: User; membership: Membership | null; company: Company | null; employee: Employee | null; isOwner: boolean; ownerOnly: boolean };
 
 export function SessionProvider({ children, fallback }: { children: ReactNode; fallback: (s: { status: "loading" | "error" | "anon" | "suspended"; message?: string; retry: () => void }) => ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -49,9 +51,13 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
       ]);
       if (me) throw me;
       const isOwner = own.data === true;
-      if (m && !isOwner) {
+      if (m) {
         const st = await sb.rpc("my_company_status");
-        if (st.data === "suspendat") { setState({ status: "suspended" }); return; }
+        if (st.data === "suspendat") {
+          // proprietarul păstrează panoul chiar dacă firma lui e suspendată
+          if (isOwner) { setState({ status: "ready", user: u.user, membership: null, company: null, employee: null, isOwner, ownerOnly: true }); return; }
+          setState({ status: "suspended" }); return;
+        }
       }
       let company: Company | null = null, employee: Employee | null = null;
       if (m) {
@@ -64,7 +70,7 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
         company = c.data as Company;
         employee = (e.data as Employee) ?? null;
       }
-      setState({ status: "ready", user: u.user, membership: (m as Membership) ?? null, company, employee, isOwner });
+      setState({ status: "ready", user: u.user, membership: (m as Membership) ?? null, company, employee, isOwner, ownerOnly: isOwner && !m });
     } catch (err) {
       setState({ status: "error", message: humanError(err) });
     }
@@ -97,6 +103,7 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
     tz: state.company?.timezone ?? "Europe/Bucharest",
     isAdmin: state.membership?.role === "admin",
     isOwner: state.isOwner,
+    ownerOnly: state.ownerOnly,
     reload: load,
     signOut,
   };

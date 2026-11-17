@@ -207,7 +207,7 @@ function CompaniesTab({ onLogins }: { onLogins: (id: string) => void }) {
               </div>
               {isOpen ? <ChevronUp className="h-5 w-5 shrink-0 text-slate-400" /> : <ChevronDown className="h-5 w-5 shrink-0 text-slate-400" />}
             </button>
-            {isOpen && <CompanyDetails c={c} onSaved={q.reload} onLogins={() => onLogins(c.id)} />}
+            {isOpen && <CompanyDetails c={c} onSaved={q.reload} onLogins={() => onLogins(c.id)} onDeleted={async () => { setOpen(null); await q.reload(); }} />}
           </div>
         );
       })}
@@ -215,7 +215,18 @@ function CompaniesTab({ onLogins }: { onLogins: (id: string) => void }) {
   );
 }
 
-function CompanyDetails({ c, onSaved, onLogins }: { c: OwnerCompany; onSaved: () => Promise<void>; onLogins: () => void }) {
+function CompanyDetails({ c, onSaved, onLogins, onDeleted }: { c: OwnerCompany; onSaved: () => Promise<void>; onLogins: () => void; onDeleted: () => Promise<void> }) {
+  const [delOpen, setDelOpen] = useState(false);
+  const [delName, setDelName] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState<string | null>(null);
+  async function remove() {
+    setDelBusy(true); setDelErr(null);
+    const { error } = await supabase().rpc("owner_delete_company", { p_company: c.id, p_confirm_name: delName });
+    setDelBusy(false);
+    if (error) { setDelErr(humanError(error)); return; }
+    await onDeleted();
+  }
   const users = useQuery(async () => must(await supabase().rpc("owner_company_users", { p_company: c.id })) as OwnerUser[], [c.id]);
   const [status, setStatus] = useState(c.status);
   const [plan, setPlan] = useState<Plan>(c.plan);
@@ -259,6 +270,24 @@ function CompanyDetails({ c, onSaved, onLogins }: { c: OwnerCompany; onSaved: ()
           ? <Button variant="danger" onClick={() => save("suspendat")} disabled={busy}>Suspendă firma</Button>
           : <Button onClick={() => save("activ")} disabled={busy}>Reactivează firma</Button>}
         <Button variant="ghost" onClick={onLogins}><MapPin className="h-4 w-4" /> Conectările firmei</Button>
+      </div>
+
+      <div className="rounded-lg border border-red-200 bg-red-50/50 p-3">
+        {!delOpen ? (
+          <button className="text-sm font-semibold text-red-700" onClick={() => setDelOpen(true)}>Șterge firma definitiv…</button>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-red-900">Se șterg <strong>toate datele</strong> firmei: lucrări, alocări, pontaje, mașini, chat și conturile de telefon ale angajaților. <strong>Nu se mai poate recupera.</strong> Dacă vrei doar să le oprești accesul, folosește „Suspendă firma”.</p>
+            <Field label={`Scrie numele firmei pentru confirmare: ${c.name}`}>
+              <Input value={delName} onChange={(e) => setDelName(e.target.value)} placeholder={c.name} />
+            </Field>
+            {delErr && <ErrorBox message={delErr} />}
+            <div className="flex gap-2">
+              <Button variant="danger" onClick={remove} loading={delBusy} disabled={delName.trim() !== c.name}>Șterge definitiv</Button>
+              <Button onClick={() => { setDelOpen(false); setDelName(""); }}>Renunță</Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>

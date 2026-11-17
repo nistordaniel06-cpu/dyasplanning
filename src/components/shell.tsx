@@ -102,14 +102,22 @@ function FrameInner({ children }: { children: ReactNode }) {
   }, [router]);
   const path = usePathname();
   const [more, setMore] = useState(false);
-  const nav = s.isOwner ? [...navFor(s.role), { href: "/proprietar", label: "Proprietar", icon: ShieldCheck }] : navFor(s.role);
+  const ownerItem = { href: "/proprietar", label: "Proprietar", icon: ShieldCheck };
+  const nav = s.ownerOnly
+    ? [ownerItem, { href: "/notificari", label: "Notificări", icon: Bell }]
+    : s.isOwner ? [...navFor(s.role), ownerItem] : navFor(s.role);
 
   useEffect(() => {
+    if (s.ownerOnly) {
+      // contul de proprietar fără firmă: doar panoul și notificările
+      if (!path.startsWith("/proprietar") && !path.startsWith("/notificari")) router.replace("/proprietar");
+      return;
+    }
     if (!s.membership) window.location.href = "/onboarding";
-  }, [s.membership]);
+  }, [s.membership, s.ownerOnly, path, router]);
   useEffect(() => setMore(false), [path]);
 
-  if (!s.membership) return <Loading />;
+  if (!s.membership && !s.ownerOnly) return <Loading />;
 
   const active = (href: string) => path === href || path.startsWith(href + "/");
   // Pe telefon: maximum 5 butoane jos; restul în „Mai mult”.
@@ -123,7 +131,7 @@ function FrameInner({ children }: { children: ReactNode }) {
           <img src="/icon.svg" alt="" className="h-8 w-8" />
           <div className="min-w-0 flex-1">
             <div className="font-bold leading-tight">DYASPlanning</div>
-            <div className="truncate text-xs text-slate-500">{s.company?.name}</div>
+            <div className="truncate text-xs text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
           </div>
           <BellLink className="-mr-2" />
         </div>
@@ -138,8 +146,8 @@ function FrameInner({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="border-t border-slate-200 p-4">
-          <div className="truncate text-sm font-semibold">{s.employee?.full_name ?? s.membership.display_name ?? s.user.email}</div>
-          <div className="text-xs text-slate-500">{s.role ? ROLE_LABEL[s.role] : ""}</div>
+          <div className="truncate text-sm font-semibold">{s.employee?.full_name ?? s.membership?.display_name ?? s.user.email}</div>
+          <div className="text-xs text-slate-500">{s.ownerOnly ? "Proprietar" : s.role ? ROLE_LABEL[s.role] : ""}</div>
           <Button size="sm" variant="ghost" className="mt-2 -ml-3" onClick={s.signOut}><LogOut className="h-4 w-4" /> Ieșire</Button>
         </div>
       </aside>
@@ -148,7 +156,7 @@ function FrameInner({ children }: { children: ReactNode }) {
         <img src="/icon.svg" alt="" className="h-7 w-7" />
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold leading-tight">DYASPlanning</div>
-          <div className="truncate text-[11px] text-slate-500">{s.company?.name}</div>
+          <div className="truncate text-[11px] text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
         </div>
         <BellLink />
       </header>
@@ -178,7 +186,7 @@ function FrameInner({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-50 bg-slate-900/40 md:hidden" onClick={() => setMore(false)}>
           <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between">
-              <span className="font-semibold">{s.company?.name}</span>
+              <span className="font-semibold">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</span>
               <button onClick={() => setMore(false)} className="p-2" aria-label="Închide"><X className="h-5 w-5" /></button>
             </div>
             {mobileMore.map((n) => (
