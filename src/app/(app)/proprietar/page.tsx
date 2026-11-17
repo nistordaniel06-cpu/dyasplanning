@@ -336,6 +336,12 @@ function PlatformTab() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [testState, setTestState] = useState<"idle" | "busy" | "sent">("idle");
+  async function testAlert() {
+    setTestState("busy"); setErr(null);
+    const { error } = await supabase().rpc("owner_test_alert");
+    if (error) { setErr(humanError(error)); setTestState("idle"); } else setTestState("sent");
+  }
   const signupUrl = typeof window !== "undefined" ? `${window.location.origin}${HIDDEN_SIGNUP_PATH}` : HIDDEN_SIGNUP_PATH;
 
   async function toggle(v: boolean) {
@@ -362,6 +368,18 @@ function PlatformTab() {
           </Button>
         </div>
         {err && <div className="mt-3"><ErrorBox message={err} /></div>}
+      </Card>
+      <Card title="Alerte pentru tine">
+        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+          <li><strong>Firmă nouă</strong> înscrisă: imediat, cu emailul adminului.</li>
+          <li><strong>Proba expiră în 3 zile</strong> și <strong>proba a expirat</strong>: zilnic la 08:17.</li>
+          <li><strong>Firmă inactivă de 14 zile</strong> (nimeni nu a mai deschis aplicația): zilnic la 08:17.</li>
+        </ul>
+        <p className="mt-2 text-xs text-slate-500">Ajung în clopoțel, ca notificare pe telefon (dacă ai activat notificările pe acest dispozitiv) și pe email (după configurarea serviciului de email).</p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button onClick={testAlert} loading={testState === "busy"}>Trimite o alertă de test</Button>
+          {testState === "sent" && <span className="text-sm text-green-800">✓ Trimisă: verifică clopoțelul, telefonul și emailul.</span>}
+        </div>
       </Card>
       <Card title="Ce poți face din acest panou">
         <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">

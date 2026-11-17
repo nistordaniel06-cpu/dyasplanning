@@ -60,6 +60,9 @@ with sync_playwright() as p:
     expect(n2.get_by_text("Înscrierea firmelor noi este închisă momentan.")).to_be_visible()
     assert sql("select count(*) from auth.users where email='nou@x.ro'")=="0"
     o.get_by_role("button", name="Deschide înscrierile").click(); expect(o.get_by_role("button", name="Închide înscrierile")).to_be_visible()
+    o.get_by_role("button", name="Trimite o alertă de test").click(); expect(o.get_by_text(re.compile("Trimisă"))).to_be_visible()
+    assert sql("select count(*) from notifications n join auth.users u on u.id=n.user_id where u.email='dani@dyas.ro' and n.kind='owner_test'")=="1"
+    ok("alertă de test trimisă proprietarului")
     o.screenshot(path="shots/74_proprietar_platforma.png", full_page=True); ok("închiderea înscrierilor blochează pagina de creare cont")
     # mobil
     m=o.context.browser.new_context(viewport={"width":390,"height":844}, is_mobile=True, has_touch=True, locale="ro-RO").new_page()
