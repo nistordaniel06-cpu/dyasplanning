@@ -27,8 +27,8 @@ declare
 begin
   last_wd := today - case extract(isodow from today)::int when 1 then 3 when 7 then 2 else 1 end;
   select id into u_admin from auth.users where email = 'admin.demo@dyasplanning.ro';
-  select id into u_sef   from auth.users where email = 'sef.demo@dyasplanning.ro';
-  select id into u_ang   from auth.users where email = 'angajat.demo@dyasplanning.ro';
+  select id into u_sef   from auth.users where email = 't40722100002@telefon.dyasplanning.app';
+  select id into u_ang   from auth.users where email = 't40722100003@telefon.dyasplanning.app';
   if u_admin is null or u_sef is null or u_ang is null then
     raise exception 'Lipsesc conturile demo din auth.users.';
   end if;
