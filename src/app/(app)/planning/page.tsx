@@ -29,7 +29,12 @@ export default function PlanningPage() {
 
 function Planning() {
   const { tz, company } = useSession();
-  const [view, setView] = useState<View>("zi");
+  const [view, setView] = useState<View>("saptamana");
+  const [layout, setLayoutState] = useState<"lucrari" | "angajati">("lucrari");
+  useEffect(() => {
+    try { const v = localStorage.getItem("dyas.planning.layout"); if (v === "angajati" || v === "lucrari") setLayoutState(v); } catch { /* fără stocare */ }
+  }, []);
+  const setLayout = (v: "lucrari" | "angajati") => { setLayoutState(v); try { localStorage.setItem("dyas.planning.layout", v); } catch { /* ignoră */ } };
   const [date, setDate] = useState(() => todayIn(tz));
   const [fEmployee, setFEmployee] = useState("");
   const [fTeam, setFTeam] = useState("");
@@ -86,9 +91,9 @@ function Planning() {
   }
 
   /** Mutare / redimensionare din drag-and-drop: verifică și salvează doar alocarea mutată. */
-  async function moveAssignment(a: Assignment, startsAt: Date, endsAt: Date, employeeId: string) {
+  async function moveAssignment(a: Assignment, startsAt: Date, endsAt: Date, employeeId: string, projectId: string = a.project_id) {
     if (!d) return;
-    const proposed = [{ id: a.id, employee_id: employeeId, project_id: a.project_id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() }];
+    const proposed = [{ id: a.id, employee_id: employeeId, project_id: projectId, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() }];
     const conflicts = findConflicts({
       proposed, existing: d.assignments, absences: d.absences, projects: d.projects, tz,
       travelBufferMinutes: company?.travel_buffer_minutes ?? 30,
@@ -99,11 +104,12 @@ function Planning() {
     setSaving(true);
     const { error } = await supabase().from("assignments").update({
       starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), employee_id: employeeId,
+      ...(projectId !== a.project_id ? { project_id: projectId, task_id: null } : {}),
     }).eq("id", a.id);
     setSaving(false);
     if (error) { setToast({ tone: "err", text: humanError(error) }); return; }
     const warn = conflicts.find((c) => !c.blocking);
-    setToast({ tone: "ok", text: warn ? `Salvat. Atenție: ${warn.message}` : "Alocarea a fost mutată și salvată." });
+    setToast({ tone: "ok", text: warn ? `Salvat. Atenție: ${warn.message}` : projectId !== a.project_id ? "Alocarea a fost mutată pe altă lucrare (fără misiune — alege una din detalii)." : "Alocarea a fost mutată și salvată." });
     await q.reload();
   }
 
@@ -123,6 +129,7 @@ function Planning() {
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={view} onChange={setView} items={[{ value: "zi", label: "Zi" }, { value: "saptamana", label: "Săptămână" }, { value: "luna", label: "Lună" }]} />
+          {view !== "luna" && <Tabs value={layout} onChange={setLayout} items={[{ value: "lucrari", label: "Pe lucrări" }, { value: "angajati", label: "Pe angajați" }]} />}
           <div className="flex items-center gap-1">
             <Button size="md" variant="secondary" onClick={() => shift(-1)} aria-label="Înapoi"><ChevronLeft className="h-5 w-5" /></Button>
             <Button size="md" variant="secondary" onClick={() => setDate(todayIn(tz))}>Azi</Button>
@@ -170,7 +177,13 @@ function Planning() {
       {d && d.employees.length > 0 && (
         <>
           {view === "zi" && <AvailabilityPanel date={date} employees={employees} d={d} tz={tz} />}
-          {view === "zi" && (
+          {view !== "luna" && layout === "lucrari" && (
+            <JobGrid days={view === "zi" ? [date] : datesBetween(from, to)} projects={d.projects}
+              assignments={assignments.filter((a) => employees.some((e) => e.id === a.employee_id) || (!fEmployee && !fTeam))}
+              onlyProject={fProject} location={fLocation} employees={byId(d.employees)} tasks={tasks} tz={tz}
+              onOpen={setEditing} onMove={moveAssignment} onPickDay={(day) => { setDate(day); setView("zi"); }} />
+          )}
+          {view === "zi" && layout === "angajati" && (
             <>
               <div className="hidden md:block">
                 <DayTimeline date={date} employees={rows} assignments={assignments} projects={projects} tasks={tasks} tz={tz}
@@ -179,7 +192,7 @@ function Planning() {
               <div className="md:hidden"><DayAgenda date={date} assignments={assignments} d={d} tz={tz} onOpen={setEditing} /></div>
             </>
           )}
-          {view === "saptamana" && (
+          {view === "saptamana" && layout === "angajati" && (
             <>
               <div className="hidden md:block">
                 <WeekGrid from={from} employees={rows} assignments={assignments} projects={projects} tasks={tasks} tz={tz} absences={d.absences}
@@ -196,7 +209,7 @@ function Planning() {
             </>
           )}
           {view === "luna" && <MonthGrid date={date} from={from} to={to} assignments={assignments} projects={projects} tz={tz} onPick={(day) => { setDate(day); setView("zi"); }} />}
-          {narrowed && rows.length === 0 && <div className="mt-4"><Empty title="Nicio alocare pentru filtrele alese" /></div>}
+          {layout === "angajati" && narrowed && rows.length === 0 && <div className="mt-4"><Empty title="Nicio alocare pentru filtrele alese" /></div>}
         </>
       )}
 
@@ -552,6 +565,109 @@ function MonthGrid({ date, from, to, assignments, projects, tz, onPick }: { date
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ----------------------------- Pe lucrări: rând = lucrare, coloană = zi ----------------------------- */
+
+const ACTIVE_PROJECT = ["planificata", "in_desfasurare", "suspendata"];
+
+function JobGrid({ days, projects, assignments, onlyProject, location, employees, tasks, tz, onOpen, onMove, onPickDay }: {
+  days: string[]; projects: Project[]; assignments: Assignment[]; onlyProject: string; location: string;
+  employees: Map<string, Employee>; tasks: Map<string, import("@/lib/types").Task>; tz: string;
+  onOpen: (a: Assignment) => void; onMove: (a: Assignment, s: Date, e: Date, emp: string, projectId?: string) => void; onPickDay: (d: string) => void;
+}) {
+  const today = todayIn(tz);
+  const [drag, setDrag] = useState<{ id: string; x: number; y: number; dx: number; dy: number; cell: string | null; moved: boolean } | null>(null);
+  const inDays = (a: Assignment) => days.includes(localDate(a.starts_at, tz));
+  const loc = location.toLowerCase();
+  const rows = projects
+    .filter((p) => (!onlyProject || p.id === onlyProject))
+    .filter((p) => !loc || [p.city, p.address].some((x) => (x ?? "").toLowerCase().includes(loc)))
+    .filter((p) => ACTIVE_PROJECT.includes(p.status) || assignments.some((a) => a.project_id === p.id && inDays(a)))
+    .map((p) => ({ p, count: assignments.filter((a) => a.project_id === p.id && inDays(a)).length }))
+    .sort((x, y) => (y.count > 0 ? 1 : 0) - (x.count > 0 ? 1 : 0) || x.p.name.localeCompare(y.p.name, "ro"));
+
+  function onDown(e: React.PointerEvent, a: Assignment) {
+    if (e.pointerType !== "mouse") return; // pe telefon: atingere = deschide detaliile
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setDrag({ id: a.id, x: e.clientX, y: e.clientY, dx: 0, dy: 0, cell: null, moved: false });
+  }
+  function onMoveEv(e: React.PointerEvent) {
+    if (!drag) return;
+    const el = document.elementsFromPoint(e.clientX, e.clientY).find((x) => (x as HTMLElement).dataset?.jobcell) as HTMLElement | undefined;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    setDrag({ ...drag, dx, dy, cell: el?.dataset.jobcell ?? null, moved: drag.moved || Math.abs(dx) + Math.abs(dy) > 6 });
+  }
+  function onUp(a: Assignment) {
+    const dr = drag; setDrag(null);
+    if (!dr || !dr.moved) { onOpen(a); return; }
+    if (!dr.cell) return;
+    const [pid, day] = dr.cell.split("|");
+    if (pid === a.project_id && day === localDate(a.starts_at, tz)) return;
+    const m = moveToDate(a.starts_at, a.ends_at, day, tz);
+    onMove(a, m.startsAt, m.endsAt, a.employee_id, pid);
+  }
+
+  if (rows.length === 0) return <Empty title="Nicio lucrare activă" action={<Link href="/lucrari?nou=1"><Button variant="primary">Adaugă lucrare</Button></Link>} />;
+
+  const single = days.length === 1;
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <table className={cx("w-full border-collapse text-sm", !single && "table-fixed")} style={single ? undefined : { minWidth: 136 + days.length * 132 }}>
+        <thead>
+          <tr className="bg-slate-50 text-xs text-slate-600">
+            <th className="sticky left-0 z-10 w-[136px] bg-slate-50 px-2 py-2 text-left font-semibold md:w-56 md:px-3">Lucrare</th>
+            {days.map((day) => (
+              <th key={day} className={cx("px-2 py-2 text-left font-semibold", day === today && "text-orange-700")}>
+                {single ? prettyDate(day) : <button className="hover:underline" onClick={() => onPickDay(day)}>{shortDate(day)}</button>}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ p }) => (
+            <tr key={p.id} className="border-t border-slate-100 align-top">
+              <td className="sticky left-0 z-10 bg-white py-2 pr-2 pl-3 md:px-3" style={{ boxShadow: `inset 4px 0 0 ${p.color}, 1px 0 0 #e2e8f0` }}>
+                <Link href={`/lucrari/${p.id}`} className="block text-[13px] font-semibold leading-tight hover:underline md:text-sm">{p.name}</Link>
+                {(p.city || p.address) && <div className="mt-0.5 flex items-start gap-1 text-xs text-slate-500"><MapPin className="mt-0.5 h-3 w-3 shrink-0" /><span className="line-clamp-2">{[p.address, p.city].filter(Boolean).join(", ")}</span></div>}
+              </td>
+              {days.map((day) => {
+                const key = `${p.id}|${day}`;
+                const items = assignments.filter((a) => a.project_id === p.id && localDate(a.starts_at, tz) === day).sort((x, y) => x.starts_at.localeCompare(y.starts_at));
+                return (
+                  <td key={day} data-jobcell={key}
+                    className={cx("group border-l border-slate-100 p-1.5", day === today && "bg-orange-50/40", drag?.moved && drag.cell === key && "bg-orange-50 ring-2 ring-inset ring-orange-400")}>
+                    <div className="space-y-1">
+                      {items.map((a) => {
+                        const e = employees.get(a.employee_id);
+                        const isDrag = drag?.id === a.id && drag.moved;
+                        return (
+                          <div key={a.id} role="button" tabIndex={0} onKeyDown={(ev) => ev.key === "Enter" && onOpen(a)}
+                            onPointerDown={(ev) => onDown(ev, a)} onPointerMove={onMoveEv} onPointerUp={() => onUp(a)}
+                            className={cx("cursor-pointer select-none rounded-md px-2 py-1 ring-1 ring-slate-200 hover:ring-orange-400 md:cursor-grab", isDrag && "relative z-20 shadow-lg ring-2 ring-orange-500", a.status === "anulata" && "line-through opacity-60")}
+                            style={{ background: `${p.color}14`, ...(isDrag ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : {}) }}>
+                            <div className="truncate text-xs font-semibold text-slate-900">{e?.full_name ?? "—"}</div>
+                            <div className="truncate text-[11px] text-slate-600">{localTime(a.starts_at, tz)}–{localTime(a.ends_at, tz)}{a.task_id ? ` · ${tasks.get(a.task_id)?.name ?? ""}` : ""}</div>
+                          </div>
+                        );
+                      })}
+                      <Link href={`/planning/aloca?lucrare=${p.id}&date=${day}`} aria-label={`Alocă la ${p.name} în ${shortDate(day)}`}
+                        className={cx("flex h-7 items-center justify-center rounded-md text-xs font-semibold text-slate-400 hover:bg-orange-50 hover:text-orange-700", items.length > 0 && "md:opacity-0 md:group-hover:opacity-100")}>
+                        <Plus className="h-3.5 w-3.5" />{items.length === 0 ? <span className="ml-1">Alocă</span> : null}
+                      </Link>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
+        Fiecare rând e o lucrare; în fiecare zi apar angajații alocați. Atinge un nume pentru detalii. Pe desktop poți trage un nume în altă zi sau pe altă lucrare.
+      </p>
     </div>
   );
 }
