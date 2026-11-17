@@ -174,7 +174,8 @@ begin
     (select count(*)::int from projects p where p.company_id = c.id),
     (select count(*)::int from assignments a where a.company_id = c.id and a.created_at > now() - interval '7 days'),
     (select count(*)::int from time_entries t where t.company_id = c.id and t.created_at > now() - interval '7 days'),
-    (select max(u.last_sign_in_at) from memberships m join auth.users u on u.id = m.user_id where m.company_id = c.id),
+    greatest((select max(u.last_sign_in_at) from memberships m join auth.users u on u.id = m.user_id where m.company_id = c.id),
+             (select max(l.at) from login_events l where l.company_id = c.id)),
     (select l.city from login_events l where l.company_id = c.id order by l.at desc limit 1),
     (select l.country from login_events l where l.company_id = c.id order by l.at desc limit 1)
   from companies c
@@ -188,7 +189,8 @@ language plpgsql stable security definer set search_path = public, auth as $$
 begin
   perform owner_guard();
   return query
-  select m.user_id, u.email::text, coalesce(e.full_name, m.display_name), m.role, u.created_at, u.last_sign_in_at,
+  select m.user_id, u.email::text, coalesce(e.full_name, m.display_name), m.role, u.created_at,
+    greatest(u.last_sign_in_at, (select max(x.at) from login_events x where x.user_id = m.user_id)),
     l.city, l.country, l.device, coalesce(l.installed, false),
     (select count(*)::int from login_events x where x.user_id = m.user_id and x.at > now() - interval '30 days')
   from memberships m
