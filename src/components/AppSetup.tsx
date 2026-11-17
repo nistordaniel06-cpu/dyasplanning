@@ -21,6 +21,7 @@ export function useServiceWorker() {
 export function AppSetupCard({ compact = false }: { compact?: boolean }) {
   const [state, setState] = useState<PushState | null>(null);
   const [canInstall, setCanInstall] = useState(false);
+  const [justInstalled, setJustInstalled] = useState(false);
   const [installed, setInstalled] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function AppSetupCard({ compact = false }: { compact?: boolean }) {
     if (!deferredInstall) return;
     await deferredInstall.prompt();
     const r = await deferredInstall.userChoice;
-    if (r.outcome === "accepted") { setInstalled(true); deferredInstall = null; setCanInstall(false); }
+    if (r.outcome === "accepted") { setJustInstalled(true); setInstalled(true); deferredInstall = null; setCanInstall(false); }
   }
 
   return (
@@ -70,6 +71,12 @@ export function AppSetupCard({ compact = false }: { compact?: boolean }) {
           ) : (
             <p className="flex items-start gap-2 text-slate-700"><Download className="mt-0.5 h-4 w-4 shrink-0" /><span>Din meniul browserului (⋮) alege <strong>„Instalează aplicația”</strong> sau <strong>„Adaugă pe ecranul de pornire”</strong>.</span></p>
           )
+        )}
+        {justInstalled && (
+          <p className="rounded-lg bg-white p-3 text-slate-700">
+            Iconița <strong>DYASPlanning</strong> apare pe ecran în câteva secunde. Dacă nu apare pe <strong>Xiaomi / Redmi / POCO</strong>:
+            Setări → Aplicații → Chrome → Alte permisiuni → pornește <strong>„Scurtături pe ecranul de pornire”</strong>, apoi instalează din nou din meniul Chrome (⋮).
+          </p>
         )}
         {state === "off" && <Button variant={installed ? "primary" : "secondary"} className="w-full" onClick={turnOn} loading={busy}><Bell className="h-4 w-4" />Activează notificările</Button>}
         {state === "on" && !compact && (
