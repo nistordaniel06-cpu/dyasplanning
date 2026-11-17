@@ -1,0 +1,10 @@
+{
+  "name": "DYASPlanning",
+  "short_name": "DYASPlanning",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ea580c",
+  "lang": "ro",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

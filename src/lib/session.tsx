@@ -1,0 +1,88 @@
+"use client";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "./supabase/client";
+import { humanError } from "./errors";
+import type { AppRole, Company, Employee, Membership } from "./types";
+
+export interface SessionValue {
+  user: User;
+  membership: Membership | null;
+  company: Company | null;
+  employee: Employee | null;
+  role: AppRole | null;
+  tz: string;
+  isAdmin: boolean;
+  reload: () => Promise<void>;
+  signOut: () => Promise<void>;
+}
+
+const Ctx = createContext<SessionValue | null>(null);
+
+export function useSession(): SessionValue {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useSession în afara SessionProvider");
+  return v;
+}
+
+type State =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "anon" }
+  | { status: "ready"; user: User; membership: Membership | null; company: Company | null; employee: Employee | null };
+
+export function SessionProvider({ children, fallback }: { children: ReactNode; fallback: (s: { status: "loading" | "error" | "anon"; message?: string; retry: () => void }) => ReactNode }) {
+  const [state, setState] = useState<State>({ status: "loading" });
+
+  const load = useCallback(async () => {
+    const sb = supabase();
+    try {
+      const { data: u, error: ue } = await sb.auth.getUser();
+      if (ue || !u.user) { setState({ status: "anon" }); return; }
+      const { data: m, error: me } = await sb.from("memberships").select("*").eq("user_id", u.user.id).maybeSingle();
+      if (me) throw me;
+      let company: Company | null = null, employee: Employee | null = null;
+      if (m) {
+        const [c, e] = await Promise.all([
+          sb.from("companies").select("*").eq("id", m.company_id).single(),
+          m.employee_id ? sb.from("employees").select("*").eq("id", m.employee_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        ]);
+        if (c.error) throw c.error;
+        if (e.error) throw e.error;
+        company = c.data as Company;
+        employee = (e.data as Employee) ?? null;
+      }
+      setState({ status: "ready", user: u.user, membership: (m as Membership) ?? null, company, employee });
+    } catch (err) {
+      setState({ status: "error", message: humanError(err) });
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const { data } = supabase().auth.onAuthStateChange((ev) => {
+      if (ev === "SIGNED_OUT") setState({ status: "anon" });
+    });
+    return () => data.subscription.unsubscribe();
+  }, [load]);
+
+  const signOut = useCallback(async () => {
+    await supabase().auth.signOut();
+    window.location.href = "/login";
+  }, []);
+
+  if (state.status !== "ready") return <>{fallback({ status: state.status, message: state.status === "error" ? state.message : undefined, retry: () => void load() })}</>;
+
+  const value: SessionValue = {
+    user: state.user,
+    membership: state.membership,
+    company: state.company,
+    employee: state.employee,
+    role: state.membership?.role ?? null,
+    tz: state.company?.timezone ?? "Europe/Bucharest",
+    isAdmin: state.membership?.role === "admin",
+    reload: load,
+    signOut,
+  };
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
