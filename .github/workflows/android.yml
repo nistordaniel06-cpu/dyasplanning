@@ -24,7 +24,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK (preinstalat pe runner)
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties && ls "$ANDROID_HOME"
 
       - name: Dependențe + sincronizare Capacitor
         run: |
