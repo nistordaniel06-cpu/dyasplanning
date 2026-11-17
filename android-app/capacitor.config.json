@@ -1,0 +1,14 @@
+{
+  "appId": "ro.dyasplanning.app",
+  "appName": "DYASPlanning",
+  "webDir": "www",
+  "server": {
+    "url": "https://dyasplanning.vercel.app",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#f8fafc"
+  }
+}

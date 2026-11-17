@@ -4,6 +4,7 @@ import { Bell, Download, Share, X } from "lucide-react";
 import { disablePush, enablePush, isIOS, isStandalone, pushState, registerSW, type PushState } from "@/lib/push";
 import { humanError } from "@/lib/errors";
 import { Button, ErrorBox } from "./ui";
+import { isNativeApp } from "@/lib/native";
 
 interface InstallEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 let deferredInstall: InstallEvent | null = null;
@@ -36,6 +37,7 @@ export function AppSetupCard({ compact = false }: { compact?: boolean }) {
   }, [compact]);
 
   if (state === null || hidden) return null;
+  if (isNativeApp()) return null; // în aplicația Android nu e nevoie de instalare din browser
   const needPush = state === "off" || state === "ios-needs-install";
   if (compact && !needPush && installed) return null;
 

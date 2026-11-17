@@ -1,0 +1,13 @@
+{
+  "name": "dyasplanning-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Aplicația Android DYASPlanning (Capacitor) — încarcă site-ul și blochează capturile de ecran pentru angajați",
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2"
+  }
+}

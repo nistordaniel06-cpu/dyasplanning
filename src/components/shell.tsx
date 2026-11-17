@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
+import { setScreenSecure } from "@/lib/native";
 import { SessionProvider, useSession } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/labels";
 import type { AppRole } from "@/lib/types";
@@ -75,6 +76,8 @@ function FrameInner({ children }: { children: ReactNode }) {
   const s = useSession();
   const unread = useUnread();
   useServiceWorker();
+  // Aplicația Android: capturile de ecran sunt permise doar administratorului
+  useEffect(() => { void setScreenSecure(s.role !== "admin"); }, [s.role]);
   const path = usePathname();
   const [more, setMore] = useState(false);
   const nav = navFor(s.role);

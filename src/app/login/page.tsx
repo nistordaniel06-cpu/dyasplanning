@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { setScreenSecure } from "@/lib/native";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { looksLikeEmail, phoneLoginEmail } from "@/lib/phone";
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEmail = looksLikeEmail(login);
+  useEffect(() => { void setScreenSecure(true); }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
