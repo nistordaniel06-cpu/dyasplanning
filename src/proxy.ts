@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_KEY, SUPABASE_URL, isConfigured } from "@/lib/supabase/env";
 
-const PUBLIC_PATHS = ["/login", "/configurare", "/creare-cont-dyas-7k2m", "/api/push"];
+const PUBLIC_PATHS = ["/login", "/configurare", "/creare-cont-dyas-7k2m", "/api/push", "/api/presence"];
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;

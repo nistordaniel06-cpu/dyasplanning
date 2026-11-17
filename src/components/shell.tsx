@@ -3,11 +3,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, Sun, User, Users, X,
+  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, ShieldCheck, Sun, User, Users, X,
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
-import { setScreenSecure, startNativePush } from "@/lib/native";
+import { isNativeApp, setScreenSecure, startNativePush } from "@/lib/native";
 import { supabase } from "@/lib/supabase/client";
 import { SessionProvider, useSession } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/labels";
@@ -80,6 +80,18 @@ function FrameInner({ children }: { children: ReactNode }) {
   // Aplicația Android: capturile de ecran sunt permise doar administratorului
   useEffect(() => { void setScreenSecure(s.role !== "admin"); }, [s.role]);
   const router = useRouter();
+  // conectarea (oraș/dispozitiv) pentru panoul proprietarului; serverul limitează la o înregistrare / 30 min
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { data } = await supabase().auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) return;
+        const installed = window.matchMedia?.("(display-mode: standalone)").matches || isNativeApp();
+        await fetch("/api/presence", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ installed }) });
+      } catch { /* nu blochează aplicația */ }
+    })();
+  }, []);
   useEffect(() => {
     void startNativePush(
       async (token) => { await supabase().rpc("save_push_subscription", { p_endpoint: `fcm:${token}`, p_p256dh: "fcm", p_auth: "fcm", p_user_agent: "DYASPlanning Android" }); },
@@ -88,7 +100,7 @@ function FrameInner({ children }: { children: ReactNode }) {
   }, [router]);
   const path = usePathname();
   const [more, setMore] = useState(false);
-  const nav = navFor(s.role);
+  const nav = s.isOwner ? [...navFor(s.role), { href: "/proprietar", label: "Proprietar", icon: ShieldCheck }] : navFor(s.role);
 
   useEffect(() => {
     if (!s.membership) window.location.href = "/onboarding";
@@ -186,6 +198,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     <SessionProvider
       fallback={({ status, message, retry }) => {
         if (status === "anon") { if (typeof window !== "undefined") window.location.href = "/login"; return <Loading />; }
+        if (status === "suspended") return (
+          <div className="mx-auto max-w-md px-6 py-20 text-center">
+            <h1 className="text-xl font-bold">Contul firmei este suspendat</h1>
+            <p className="mt-2 text-sm text-slate-600">Accesul la DYASPlanning este oprit momentan pentru firma ta. Pentru reactivare, contactează administratorul aplicației.</p>
+            <button className="mt-6 font-semibold text-orange-700 underline" onClick={async () => { await supabase().auth.signOut(); window.location.href = "/login"; }}>Ieșire din cont</button>
+          </div>
+        );
         if (status === "error") return <div className="p-6"><ErrorBox message={message ?? "Eroare"} onRetry={retry} /></div>;
         return <Loading />;
       }}>

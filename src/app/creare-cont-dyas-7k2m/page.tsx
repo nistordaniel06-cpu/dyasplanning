@@ -16,6 +16,8 @@ export default function HiddenSignup() {
     e.preventDefault();
     setBusy(true); setError(null); setInfo(null);
     try {
+      const open = await supabase().rpc("signup_enabled");
+      if (open.data === false) { setError("Înscrierea firmelor noi este închisă momentan."); return; }
       const { data, error } = await supabase().auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: `${window.location.origin}/onboarding` } });
       if (error) throw error;
       if (data.session) window.location.href = "/onboarding";

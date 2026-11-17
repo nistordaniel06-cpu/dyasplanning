@@ -7,4 +7,4 @@ $P -c "drop database if exists dyas_test" -c "create database dyas_test" >/dev/n
 $P -d dyas_test -f supabase/tests/supabase_stub.sql >/dev/null 2>&1
 $P -d dyas_test -f supabase/schema.sql >/dev/null 2>&1
 for m in supabase/migrations/*.sql; do $P -d dyas_test -f "$m" >/dev/null 2>&1; done
-( cat supabase/tests/flow_test.sql; echo; cat supabase/tests/km_test.sql; echo; cat supabase/tests/v3_test.sql ) | $P -d dyas_test 2>&1 | grep -E "NOTICE|ERROR|TOATE|KM_|V3_" | sed 's/^.*NOTICE:  //'
+( cat supabase/tests/flow_test.sql; echo; cat supabase/tests/km_test.sql; echo; cat supabase/tests/v3_test.sql; echo; cat supabase/tests/owner_test.sql ) | $P -d dyas_test 2>&1 | grep -E "NOTICE|ERROR|TOATE|KM_|V3_|OWNER_" | sed 's/^.*NOTICE:  //'
