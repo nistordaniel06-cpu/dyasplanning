@@ -11,7 +11,7 @@ declare
   today date := (now() at time zone tz)::date;
   mon date := today - (extract(isodow from today)::int - 1);
   cid uuid;
-  u_admin uuid; u_sef uuid; u_ang uuid; u_sof uuid;
+  u_admin uuid; u_sef uuid; u_ang uuid;
   e_admin uuid; e_marian uuid; e_ion uuid; e_gheorghe uuid; e_cristian uuid; e_florin uuid;
   e_vasile uuid; e_mihai uuid; e_daniel uuid; e_costel uuid;
   t_nord uuid; t_sud uuid;
@@ -29,13 +29,12 @@ begin
   select id into u_admin from auth.users where email = 'admin.demo@dyasplanning.ro';
   select id into u_sef   from auth.users where email = 'sef.demo@dyasplanning.ro';
   select id into u_ang   from auth.users where email = 'angajat.demo@dyasplanning.ro';
-  select id into u_sof   from auth.users where email = 'sofer.demo@dyasplanning.ro';
-  if u_admin is null or u_sef is null or u_ang is null or u_sof is null then
+  if u_admin is null or u_sef is null or u_ang is null then
     raise exception 'Lipsesc conturile demo din auth.users.';
   end if;
 
   -- curăță demo-ul anterior (doar firma demo)
-  delete from memberships where user_id in (u_admin, u_sef, u_ang, u_sof);
+  delete from memberships where user_id in (u_admin, u_sef, u_ang);
   for cid in select id from companies where name = cname loop
     delete from time_entries where company_id = cid;
     delete from time_entry_history where company_id = cid;
@@ -52,18 +51,18 @@ begin
   insert into vehicles(company_id, name, plate) values (cid, 'Ford Transit', 'B 101 DMO') returning id into v_transit;
   insert into vehicles(company_id, name, plate) values (cid, 'Dacia Logan Van', 'B 202 DMO') returning id into v_logan;
 
-  -- angajați (cei cu cont: admin, șef de echipă, angajat, șofer)
+  -- angajați (cei cu cont: admin, șef de echipă, angajat). „Șofer” nu e rol: e o bifă pe fișa unui angajat obișnuit.
   insert into employees(company_id, full_name, phone, trade, user_id) values (cid, 'Andreea Dobre', '0722 100 001', 'Administrator', u_admin) returning id into e_admin;
-  insert into employees(company_id, full_name, phone, trade, skills, team_id, user_id, work_start, work_end)
-    values (cid, 'Marian Popa', '0722 100 002', 'Șef de echipă', '{coordonare,rigips,zidărie}', t_nord, u_sef, '07:30', '16:00') returning id into e_marian;
-  insert into employees(company_id, full_name, phone, trade, skills, team_id, user_id)
-    values (cid, 'Ion Stan', '0722 100 003', 'Rigipsar', '{rigips,glet,tavane false}', t_nord, u_ang) returning id into e_ion;
+  insert into employees(company_id, full_name, phone, trade, skills, team_id, user_id, work_start, work_end, is_driver, default_vehicle_id)
+    values (cid, 'Marian Popa', '0722 100 002', 'Șef de echipă', '{coordonare,rigips,zidărie,permis B}', t_nord, u_sef, '07:30', '16:00', true, v_logan) returning id into e_marian;
   insert into employees(company_id, full_name, phone, trade, skills, team_id, user_id, is_driver, default_vehicle_id)
-    values (cid, 'Gheorghe Matei', '0722 100 004', 'Șofer / muncitor', '{transport materiale,demolări}', t_nord, u_sof, true, v_transit) returning id into e_gheorghe;
+    values (cid, 'Ion Stan', '0722 100 003', 'Rigipsar', '{rigips,glet,tavane false,permis B}', t_nord, u_ang, true, v_transit) returning id into e_ion;
+  insert into employees(company_id, full_name, phone, trade, skills, team_id)
+    values (cid, 'Gheorghe Matei', '0722 100 004', 'Muncitor', '{transport materiale,demolări}', t_nord) returning id into e_gheorghe;
   insert into employees(company_id, full_name, phone, trade, skills, team_id) values (cid, 'Cristian Neagu', '0722 100 005', 'Electrician', '{instalații electrice,tablouri}', t_nord) returning id into e_cristian;
   insert into employees(company_id, full_name, phone, trade, skills, team_id) values (cid, 'Florin Radu', '0722 100 006', 'Zugrav', '{zugrăveli,glet,tapet}', t_nord) returning id into e_florin;
-  insert into employees(company_id, full_name, phone, trade, skills, team_id, is_driver, default_vehicle_id)
-    values (cid, 'Vasile Dumitru', '0722 100 007', 'Zidar', '{zidărie,tencuieli,beton}', t_sud, true, v_logan) returning id into e_vasile;
+  insert into employees(company_id, full_name, phone, trade, skills, team_id)
+    values (cid, 'Vasile Dumitru', '0722 100 007', 'Zidar', '{zidărie,tencuieli,beton}', t_sud) returning id into e_vasile;
   insert into employees(company_id, full_name, phone, trade, skills, team_id) values (cid, 'Mihai Toma', '0722 100 008', 'Instalator', '{sanitare,termice}', t_sud) returning id into e_mihai;
   insert into employees(company_id, full_name, phone, trade, skills, team_id) values (cid, 'Daniel Ene', '0722 100 009', 'Faianțar', '{faianță,gresie}', t_sud) returning id into e_daniel;
   insert into employees(company_id, full_name, phone, trade, skills, team_id) values (cid, 'Costel Barbu', '0722 100 010', 'Muncitor', '{demolări,curățenie,ajutor}', t_sud) returning id into e_costel;
@@ -73,8 +72,7 @@ begin
   insert into memberships(user_id, company_id, role, employee_id, display_name) values
     (u_admin, cid, 'admin', e_admin, 'Andreea Dobre'),
     (u_sef, cid, 'sef_echipa', e_marian, 'Marian Popa'),
-    (u_ang, cid, 'angajat', e_ion, 'Ion Stan'),
-    (u_sof, cid, 'angajat', e_gheorghe, 'Gheorghe Matei');
+    (u_ang, cid, 'angajat', e_ion, 'Ion Stan');
 
   -- lucrări
   insert into projects(company_id, name, description, client_name, contact_name, contact_phone, address, city, start_date, due_date, manager_employee_id, status, color)
@@ -163,17 +161,16 @@ begin
   update time_entries set flag_note = 'A plecat mai devreme cu acordul meu.'
    where id = (select id from time_entries where company_id = cid and employee_id = e_cristian and status = 'trimis' order by started_at desc limit 1);
 
-  -- km de bord: ultimele 10 zile lucrătoare pentru ambele mașini; azi doar Logan (Transit lipsește → alertă)
+  -- km de bord: ultimele zile lucrătoare; azi lipsesc ambele (Ion și Marian îi introduc live la prezentare)
   for i in reverse 14..0 loop
     d := today - i;
     continue when extract(isodow from d)::int > 5;
-    if d < today then
-      insert into odometer_readings(company_id, vehicle_id, employee_id, reading_date, km)
-        values (cid, v_transit, e_gheorghe, d, km_t);
-      km_t := km_t + 38 + ((extract(day from d)::int * 7) % 45);
-    end if;
+    continue when d >= today;
     insert into odometer_readings(company_id, vehicle_id, employee_id, reading_date, km)
-      values (cid, v_logan, e_vasile, d, km_l);
+      values (cid, v_transit, e_ion, d, km_t);
+    km_t := km_t + 38 + ((extract(day from d)::int * 7) % 45);
+    insert into odometer_readings(company_id, vehicle_id, employee_id, reading_date, km)
+      values (cid, v_logan, e_marian, d, km_l);
     km_l := km_l + 52 + ((extract(day from d)::int * 11) % 60);
   end loop;
 

@@ -9,7 +9,7 @@ declare
   uid uuid;
 begin
   for r in select * from (values
-    ('admin.demo@dyasplanning.ro'), ('sef.demo@dyasplanning.ro'), ('angajat.demo@dyasplanning.ro'), ('sofer.demo@dyasplanning.ro')
+    ('admin.demo@dyasplanning.ro'), ('sef.demo@dyasplanning.ro'), ('angajat.demo@dyasplanning.ro')
   ) as x(email) loop
     select id into uid from auth.users where email = r.email;
     if uid is null then
