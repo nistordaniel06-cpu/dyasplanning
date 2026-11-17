@@ -18,12 +18,15 @@ android {
     }
     signingConfigs {
         release {
-            // GitHub Actions: cheia reală din Secrets (ANDROID_KEYSTORE_*), altfel cheia de test din repo
-            def ksFile = System.getenv("ANDROID_KEYSTORE_FILE") ?: "../../keystore/dyasplanning-test.jks"
-            storeFile file(ksFile)
-            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: "dyasplanning"
-            keyAlias System.getenv("ANDROID_KEY_ALIAS") ?: "dyasplanning"
-            keyPassword System.getenv("ANDROID_KEY_PASSWORD") ?: "dyasplanning"
+            // Cheia reală e criptată în keystore/release.p12.enc; GitHub Actions o decriptează cu secretul ANDROID_KEY_PASSWORD.
+            def ksFile = System.getenv("ANDROID_KEYSTORE_FILE")
+            if (ksFile) {
+                storeFile file(ksFile)
+                storeType "PKCS12"
+                storePassword System.getenv("ANDROID_KEY_PASSWORD")
+                keyAlias "dyasplanning"
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
         }
     }
     buildTypes {

@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, Sun, User, Users, X,
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
-import { setScreenSecure } from "@/lib/native";
+import { setScreenSecure, startNativePush } from "@/lib/native";
+import { supabase } from "@/lib/supabase/client";
 import { SessionProvider, useSession } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/labels";
 import type { AppRole } from "@/lib/types";
@@ -78,6 +79,13 @@ function FrameInner({ children }: { children: ReactNode }) {
   useServiceWorker();
   // Aplicația Android: capturile de ecran sunt permise doar administratorului
   useEffect(() => { void setScreenSecure(s.role !== "admin"); }, [s.role]);
+  const router = useRouter();
+  useEffect(() => {
+    void startNativePush(
+      async (token) => { await supabase().rpc("save_push_subscription", { p_endpoint: `fcm:${token}`, p_p256dh: "fcm", p_auth: "fcm", p_user_agent: "DYASPlanning Android" }); },
+      (url) => router.push(url),
+    );
+  }, [router]);
   const path = usePathname();
   const [more, setMore] = useState(false);
   const nav = navFor(s.role);

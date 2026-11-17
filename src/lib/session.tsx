@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase/client";
 import { humanError } from "./errors";
+import { nativePushToken } from "./native";
 import type { AppRole, Company, Employee, Membership } from "./types";
 
 export interface SessionValue {
@@ -67,6 +68,9 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
   }, [load]);
 
   const signOut = useCallback(async () => {
+    // telefonul nu mai primește notificările acestui cont
+    const t = nativePushToken();
+    if (t) await supabase().from("push_subscriptions").delete().eq("endpoint", `fcm:${t}`).then(undefined, () => undefined);
     await supabase().auth.signOut();
     window.location.href = "/login";
   }, []);

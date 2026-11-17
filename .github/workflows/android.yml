@@ -32,22 +32,24 @@ jobs:
           npm ci || npm install
           npx cap sync android
 
-      - name: Cheia de semnare (din Secrets, dacă e configurată)
+      - name: Cheia de semnare (decriptată cu secretul ANDROID_KEY_PASSWORD)
         env:
-          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
-            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          if [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::Lipsește secretul ANDROID_KEY_PASSWORD (Settings → Secrets and variables → Actions)."; exit 1
           fi
+          printf '%s' "$ANDROID_KEY_PASSWORD" > "$RUNNER_TEMP/pw"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -in keystore/release.p12.enc -out "$RUNNER_TEMP/release.p12" -pass file:"$RUNNER_TEMP/pw"
+          rm "$RUNNER_TEMP/pw"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
 
       - name: Build APK
         working-directory: android-app/android
         env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          [ -f app/google-services.json ] && echo "Firebase: activ" || echo "::warning::Fără google-services.json — notificările nu vor merge în aplicație"
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
           cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/DYASPlanning.apk"
@@ -65,5 +67,5 @@ jobs:
           gh release delete android-latest -y --cleanup-tag || true
           gh release create android-latest DYASPlanning.apk \
             --title "DYASPlanning Android 1.0.${{ github.run_number }}" \
-            --notes "Aplicația Android DYASPlanning. Descarcă DYASPlanning.apk pe telefon și instalează-l. Capturile de ecran sunt blocate pentru angajați și șefi de echipă, permise pentru administrator." \
+            --notes "Aplicația Android DYASPlanning. Descarcă DYASPlanning.apk pe telefon și instalează-l. Capturile de ecran sunt blocate pentru angajați și șefi de echipă, permise pentru administrator. Notificări la schimbarea programului și la mesaje noi." \
             --latest

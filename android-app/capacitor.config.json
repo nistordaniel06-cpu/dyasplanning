@@ -10,5 +10,14 @@
   "android": {
     "allowMixedContent": false,
     "backgroundColor": "#f8fafc"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
   }
 }
