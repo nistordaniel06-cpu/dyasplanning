@@ -61,7 +61,8 @@ function Setari() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Numele firmei" className="sm:col-span-2"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Fus orar" hint="Programul și pontajele se afișează în acest fus orar.">
-            <Select value={timezone} onChange={(e) => setTimezone(e.target.value)}>{TIMEZONES.map((z) => <option key={z}>{z}</option>)}</Select>
+            <Select value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+              {!TIMEZONES.some((z) => z.value === timezone) && <option value={timezone}>{timezone}</option>}{TIMEZONES.map((z) => <option key={z.value} value={z.value}>{z.label}</option>)}</Select>
           </Field>
           <Field label="Timp minim de deplasare (min)" hint="Avertizare când un angajat are lucrări consecutive în locații diferite.">
             <Input type="number" min={0} max={240} value={buffer} onChange={(e) => setBuffer(e.target.value)} />

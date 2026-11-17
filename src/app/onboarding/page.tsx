@@ -63,7 +63,7 @@ export default function Onboarding() {
               <Field label="Numele firmei"><Input required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="ex. Construct Grup SRL" /></Field>
               <Field label="Numele tău" hint="Vei fi administratorul firmei."><Input required value={name} onChange={(e) => setName(e.target.value)} /></Field>
               <Field label="Fus orar al firmei" hint="Programul se afișează în acest fus orar.">
-                <Select value={tz} onChange={(e) => setTz(e.target.value)}>{TIMEZONES.map((z) => <option key={z}>{z}</option>)}</Select>
+                <Select value={tz} onChange={(e) => setTz(e.target.value)}>{TIMEZONES.map((z) => <option key={z.value} value={z.value}>{z.label}</option>)}</Select>
               </Field>
             </>
           )}

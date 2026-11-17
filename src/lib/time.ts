@@ -128,9 +128,20 @@ export function monthLabel(date: string): string {
   return `${months[m - 1]} ${y}`;
 }
 
-export const TIMEZONES = [
-  "Europe/Bucharest", "Europe/Chisinau", "Europe/London", "Europe/Berlin", "Europe/Rome", "Europe/Madrid",
-  "Europe/Paris", "Europe/Vienna", "Europe/Athens", "Europe/Istanbul", "UTC",
+export const TIMEZONES: { value: string; label: string }[] = [
+  { value: "Europe/Bucharest", label: "România (București)" },
+  { value: "Europe/Amsterdam", label: "Olanda (Amsterdam)" },
+  { value: "Europe/Chisinau", label: "Republica Moldova (Chișinău)" },
+  { value: "Europe/Brussels", label: "Belgia (Bruxelles)" },
+  { value: "Europe/Berlin", label: "Germania (Berlin)" },
+  { value: "Europe/Vienna", label: "Austria (Viena)" },
+  { value: "Europe/Paris", label: "Franța (Paris)" },
+  { value: "Europe/Rome", label: "Italia (Roma)" },
+  { value: "Europe/Madrid", label: "Spania (Madrid)" },
+  { value: "Europe/London", label: "Regatul Unit (Londra)" },
+  { value: "Europe/Athens", label: "Grecia (Atena)" },
+  { value: "Europe/Istanbul", label: "Turcia (Istanbul)" },
+  { value: "UTC", label: "UTC" },
 ];
 
 /** Momentul `iso` este în intervalul [from, to)? Compară numeric (formatele ISO pot diferi: „Z” vs „+00:00”). */
