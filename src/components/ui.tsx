@@ -186,7 +186,7 @@ export function Tabs<T extends string>({ value, onChange, items }: { value: T; o
     <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1" role="tablist">
       {items.map((it) => (
         <button key={it.value} role="tab" aria-selected={value === it.value} onClick={() => onChange(it.value)}
-          className={cx("h-9 rounded-md px-3 text-sm font-semibold", value === it.value ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100")}>
+          className={cx("h-9 shrink-0 whitespace-nowrap rounded-md px-3 text-sm font-semibold", value === it.value ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100")}>
           {it.label}
         </button>
       ))}

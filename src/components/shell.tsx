@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
+import { AnnouncementBar } from "./Announcement";
+import { Toasts } from "./Toasts";
 import { isNativeApp, setScreenSecure, startNativePush } from "@/lib/native";
 import { supabase } from "@/lib/supabase/client";
 import { SessionProvider, useSession } from "@/lib/session";
@@ -151,7 +153,8 @@ function FrameInner({ children }: { children: ReactNode }) {
         <BellLink />
       </header>
 
-      <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-10">{children}</main>
+      <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-10"><AnnouncementBar />{children}</main>
+      <Toasts />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="grid" style={{ gridTemplateColumns: `repeat(${mobileMain.length + (mobileMore.length ? 1 : 0)}, minmax(0, 1fr))` }}>

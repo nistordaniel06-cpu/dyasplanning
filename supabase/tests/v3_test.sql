@@ -52,7 +52,7 @@ select tst.assert((select count(*) from notifications where title = 'Program nou
 select tst.assert((select body from notifications where title = 'Program nou') like 'Casă Ploiești%', 'notificarea conține lucrarea');
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 update assignments set ends_at = ends_at + interval '1 hour' where employee_id = tst.id('andrei') and project_id = tst.id('p2');
-select tst.assert((select count(*) from notifications) = 0, 'adminul nu vede notificările altora');
+select tst.assert((select count(*) from notifications where user_id <> auth.uid()) = 0, 'adminul nu vede notificările altora');
 select set_config('request.jwt.claim.sub', :'andrei_uid', false);
 select tst.assert((select count(*) from notifications where title = 'Programul tău s-a schimbat') = 1, 'notificare la modificare');
 update notifications set read_at = now();

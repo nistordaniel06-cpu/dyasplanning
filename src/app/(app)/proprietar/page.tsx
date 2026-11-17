@@ -1,6 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Copy, MapPin, Search } from "lucide-react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { ChevronDown, ChevronUp, Copy, MapPin, Megaphone, Search } from "lucide-react";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Notice, PageHeader, Select, Stat, Tabs, Textarea, cx } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
@@ -60,6 +61,13 @@ function ago(iso: string | null): string {
 }
 const dt = (iso: string) => new Date(iso).toLocaleString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const today = () => new Date().toISOString().slice(0, 10);
+/** Lunea ultimelor n săptămâni (YYYY-MM-DD), ca în baza de date (date_trunc week, UTC). */
+function lastWeeks(n: number): string[] {
+  const d = new Date(); d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return Array.from({ length: n }, (_, i) => { const x = new Date(d); x.setUTCDate(d.getUTCDate() - 7 * (n - 1 - i)); return x.toISOString().slice(0, 10); });
+}
+const fmtWeek = (w: string) => w.slice(5).split("-").reverse().join(".");
 
 export default function ProprietarPage() {
   const { isOwner } = useSession();
@@ -71,28 +79,35 @@ export default function ProprietarPage() {
       </div>
     );
   }
-  return <Proprietar />;
+  return <Suspense fallback={<Loading />}><Proprietar /></Suspense>;
 }
 
-type Tab = "prezentare" | "firme" | "conectari" | "platforma";
+type Tab = "prezentare" | "firme" | "activitate" | "conectari" | "anunturi" | "platforma";
+const TABS: Tab[] = ["prezentare", "firme", "activitate", "conectari", "anunturi", "platforma"];
 
 function Proprietar() {
-  const [tab, setTab] = useState<Tab>("prezentare");
+  const sp = useSearchParams();
+  const initial = sp.get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "prezentare");
   const [companyFilter, setCompanyFilter] = useState<string>("");
   return (
     <div>
       <PageHeader title="Panoul proprietarului" subtitle="Toate firmele înregistrate în DYASPlanning. Vizibil doar pentru tine." />
-      <div className="mb-4 overflow-x-auto">
+      <div className="-mx-4 mb-4 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
         <Tabs value={tab} onChange={setTab} items={[
           { value: "prezentare", label: "Prezentare" },
           { value: "firme", label: "Firme" },
+          { value: "activitate", label: "Activitate" },
           { value: "conectari", label: "Conectări" },
+          { value: "anunturi", label: "Anunțuri" },
           { value: "platforma", label: "Platformă" },
         ]} />
       </div>
       {tab === "prezentare" && <OverviewTab onOpen={(t) => setTab(t)} />}
       {tab === "firme" && <CompaniesTab onLogins={(id) => { setCompanyFilter(id); setTab("conectari"); }} />}
+      {tab === "activitate" && <ActivityTab company={companyFilter} setCompany={setCompanyFilter} />}
       {tab === "conectari" && <LoginsTab company={companyFilter} setCompany={setCompanyFilter} />}
+      {tab === "anunturi" && <AnnouncementsTab />}
       {tab === "platforma" && <PlatformTab />}
     </div>
   );
@@ -104,7 +119,8 @@ function OverviewTab({ onOpen }: { onOpen: (t: Tab) => void }) {
   if (q.loading && !q.data) return <Loading />;
   if (q.error) return <ErrorBox message={q.error} onRetry={q.reload} />;
   const o = q.data!;
-  const max = Math.max(1, ...o.signups_by_week.map((w) => w.count));
+  const weeks = lastWeeks(12).map((w) => ({ week: w, count: o.signups_by_week.find((x) => x.week === w)?.count ?? 0 }));
+  const max = Math.max(1, ...weeks.map((w) => w.count));
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -119,20 +135,18 @@ function OverviewTab({ onOpen }: { onOpen: (t: Tab) => void }) {
       </div>
       {!o.signup_enabled && <Notice tone="amber">Înscrierea firmelor noi este <strong>închisă</strong>. O poți redeschide din tab-ul Platformă.</Notice>}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Firme noi pe săptămână (ultimele 12)">
-          {o.signups_by_week.length === 0 ? <p className="text-sm text-slate-600">Nicio firmă nouă în ultimele 12 săptămâni.</p> : (
-            <div className="flex h-36 items-end gap-1.5">
-              {o.signups_by_week.map((w) => (
-                <div key={w.week} className="flex flex-1 flex-col items-center gap-1" title={`Săpt. ${w.week}: ${w.count}`}>
-                  <span className="text-xs font-semibold text-slate-700">{w.count}</span>
-                  <div className="w-full rounded-t bg-orange-500" style={{ height: `${(w.count / max) * 100}px` }} />
-                  <span className="text-[10px] text-slate-500">{w.week.slice(5).split("-").reverse().join(".")}</span>
-                </div>
-              ))}
-            </div>
-          )}
+        <Card title="Firme noi pe săptămână">
+          <div className="flex h-32 items-end gap-1 border-b border-slate-200">
+            {weeks.map((w) => (
+              <div key={w.week} className="flex h-full flex-1 flex-col items-center justify-end" title={`Săptămâna ${fmtWeek(w.week)}: ${w.count}`}>
+                {w.count > 0 && <span className="mb-0.5 text-[11px] font-semibold text-slate-700">{w.count}</span>}
+                <div className={cx("w-full max-w-[18px] rounded-t", w.count ? "bg-orange-500" : "bg-slate-100")} style={{ height: w.count ? `${Math.max(8, (w.count / max) * 96)}px` : "3px" }} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{fmtWeek(weeks[0].week)}</span><span>săpt. curentă</span></div>
         </Card>
-        <Card title="Țări (utilizatori conectați în ultimele 30 de zile)" action={<button className="text-sm font-semibold text-orange-700" onClick={() => onOpen("conectari")}>Vezi conectările</button>}>
+        <Card title="Țări · ultimele 30 de zile" action={<button className="text-sm font-semibold text-orange-700" onClick={() => onOpen("conectari")}>Detalii</button>}>
           {o.countries.length === 0 ? <p className="text-sm text-slate-600">Încă nu există conectări înregistrate. Apar de la următoarea deschidere a aplicației.</p> : (
             <ul className="divide-y divide-slate-100 text-sm">
               {o.countries.map((c) => (
@@ -330,9 +344,125 @@ function LoginsTab({ company, setCompany }: { company: string; setCompany: (v: s
   );
 }
 
+// ---------- Activitate ----------
+interface Activity { at: string; company_id: string; company_name: string | null; actor: string | null; entity: string; op: string; n: number; summary: string }
+function ActivityTab({ company, setCompany }: { company: string; setCompany: (v: string) => void }) {
+  const companies = useQuery(async () => must(await supabase().rpc("owner_companies")) as OwnerCompany[], []);
+  const q = useQuery(async () => must(await supabase().rpc("owner_activity_feed", { p_company: company || null, p_limit: 300 })) as Activity[], [company]);
+  const tone = (op: string) => (op === "DELETE" ? "red" : op === "INSERT" ? "green" : "blue") as "red" | "green" | "blue";
+  return (
+    <div className="space-y-3">
+      <Select value={company} onChange={(e) => setCompany(e.target.value)} className="sm:w-80">
+        <option value="">Toate firmele</option>
+        {(companies.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </Select>
+      <p className="text-xs text-slate-500">Tot ce fac administratorii firmelor: lucrări, alocări, angajați, pontaje aprobate, mașini, setări. Păstrat 90 de zile.</p>
+      {q.loading && !q.data ? <Loading /> : q.error ? <ErrorBox message={q.error} onRetry={q.reload} /> : (q.data ?? []).length === 0 ? (
+        <Empty title="Nicio activitate încă">Acțiunile administratorilor apar aici de acum înainte.</Empty>
+      ) : (
+        <Card>
+          <ul className="divide-y divide-slate-100 text-sm">
+            {q.data!.map((a, i) => (
+              <li key={i} className="flex items-start justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="font-medium">{a.summary}</div>
+                  <div className="text-xs text-slate-500">{a.company_name ?? "—"}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <Badge tone={tone(a.op)}>{a.op === "INSERT" ? "adăugare" : a.op === "UPDATE" ? "modificare" : "ștergere"}</Badge>
+                  <div className="mt-1 text-xs text-slate-500">{ago(a.at)}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ---------- Anunțuri ----------
+interface Ann { id: string; title: string; body: string | null; tone: "info" | "warning"; created_at: string; ends_at: string | null; active: boolean }
+function AnnouncementsTab() {
+  const q = useQuery(async () => must(await supabase().rpc("owner_announcements")) as Ann[], []);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [tone, setTone] = useState<"info" | "warning">("info");
+  const [days, setDays] = useState("7");
+  const [pushToo, setPushToo] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "green" | "red"; text: string } | null>(null);
+  const live = (q.data ?? []).find((a) => a.active && (!a.ends_at || new Date(a.ends_at) > new Date()));
+
+  async function publish() {
+    setBusy(true); setMsg(null);
+    const { error } = await supabase().rpc("owner_publish_announcement", { p_title: title, p_body: body, p_tone: tone, p_days: Number(days) || 0, p_push: pushToo });
+    setBusy(false);
+    if (error) { setMsg({ tone: "red", text: humanError(error) }); return; }
+    setTitle(""); setBody(""); setMsg({ tone: "green", text: pushToo ? "Anunț publicat și trimis ca notificare tuturor." : "Anunț publicat." });
+    await q.reload();
+  }
+  async function stop() {
+    setBusy(true);
+    const { error } = await supabase().rpc("owner_end_announcement");
+    setBusy(false);
+    if (error) setMsg({ tone: "red", text: humanError(error) }); else await q.reload();
+  }
+
+  return (
+    <div className="space-y-4">
+      {live && (
+        <Card title="Anunț activ acum" action={<Button size="sm" variant="danger" onClick={stop} loading={busy}>Oprește</Button>}>
+          <div className={cx("rounded-lg border p-3 text-sm", live.tone === "warning" ? "border-amber-300 bg-amber-50" : "border-blue-200 bg-blue-50")}>
+            <div className="font-semibold">{live.title}</div>
+            {live.body && <div className="mt-0.5 whitespace-pre-line">{live.body}</div>}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">{live.ends_at ? `Se afișează până pe ${dt(live.ends_at)}.` : "Fără dată de final."}</p>
+        </Card>
+      )}
+      <Card title="Anunț nou pentru toate firmele">
+        <div className="space-y-3">
+          <Field label="Titlu"><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex. Mentenanță duminică 22:00–23:00" /></Field>
+          <Field label="Mesaj (opțional)"><Textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Detalii pentru utilizatori…" /></Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Tip">
+              <Select value={tone} onChange={(e) => setTone(e.target.value as "info" | "warning")}>
+                <option value="info">Informare (albastru)</option>
+                <option value="warning">Atenționare (galben)</option>
+              </Select>
+            </Field>
+            <Field label="Se afișează">
+              <Select value={days} onChange={(e) => setDays(e.target.value)}>
+                <option value="1">1 zi</option><option value="3">3 zile</option><option value="7">7 zile</option>
+                <option value="30">30 de zile</option><option value="0">Până îl opresc</option>
+              </Select>
+            </Field>
+          </div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-orange-600" checked={pushToo} onChange={(e) => setPushToo(e.target.checked)} />Trimite și ca notificare pe telefon tuturor utilizatorilor</label>
+          {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
+          <Button variant="primary" onClick={publish} loading={busy} disabled={!title.trim()}><Megaphone className="h-4 w-4" /> Publică anunțul</Button>
+          <p className="text-xs text-slate-500">Apare sus în aplicație la toate firmele active. Un anunț nou îl înlocuiește pe cel vechi. Fiecare utilizator îl poate închide.</p>
+        </div>
+      </Card>
+      {(q.data ?? []).length > 0 && (
+        <Card title="Istoric">
+          <ul className="divide-y divide-slate-100 text-sm">
+            {q.data!.map((a) => (
+              <li key={a.id} className="flex justify-between gap-3 py-2">
+                <span className="min-w-0 truncate">{a.title}</span>
+                <span className="shrink-0 text-xs text-slate-500">{new Date(a.created_at).toLocaleDateString("ro-RO")}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ---------- Platformă ----------
 function PlatformTab() {
-  const q = useQuery(async () => must(await supabase().rpc("owner_overview")) as Overview, []);
+  const q = useQuery(async () => must(await supabase().rpc("owner_settings")) as { signup_enabled: boolean; activity_push: boolean }, []);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -344,6 +474,12 @@ function PlatformTab() {
   }
   const signupUrl = typeof window !== "undefined" ? `${window.location.origin}${HIDDEN_SIGNUP_PATH}` : HIDDEN_SIGNUP_PATH;
 
+  async function toggleActivity(v: boolean) {
+    setBusy(true); setErr(null);
+    const { error } = await supabase().rpc("owner_set_activity_push", { p_enabled: v });
+    setBusy(false);
+    if (error) setErr(humanError(error)); else await q.reload();
+  }
   async function toggle(v: boolean) {
     setBusy(true); setErr(null);
     const { error } = await supabase().rpc("owner_set_signup", { p_enabled: v });
@@ -374,7 +510,12 @@ function PlatformTab() {
           <li><strong>Firmă nouă</strong> înscrisă: imediat, cu emailul adminului.</li>
           <li><strong>Proba expiră în 3 zile</strong> și <strong>proba a expirat</strong>: zilnic la 08:17.</li>
           <li><strong>Firmă inactivă de 14 zile</strong> (nimeni nu a mai deschis aplicația): zilnic la 08:17.</li>
+          <li><strong>Fiecare acțiune a unui administrator de firmă</strong> (cel mult o notificare la 2 minute pentru același tip de acțiune; toate apar în tab-ul Activitate).</li>
         </ul>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input type="checkbox" className="h-4 w-4 accent-orange-600" checked={q.data!.activity_push} disabled={busy} onChange={(e) => toggleActivity(e.target.checked)} />
+          Notificare pe telefon pentru acțiunile administratorilor
+        </label>
         <p className="mt-2 text-xs text-slate-500">Ajung în clopoțel, ca notificare pe telefon (dacă ai activat notificările pe acest dispozitiv) și pe email (după configurarea serviciului de email).</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <Button onClick={testAlert} loading={testState === "busy"}>Trimite o alertă de test</Button>
