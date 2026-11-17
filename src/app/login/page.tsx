@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { looksLikeEmail, phoneLoginEmail } from "@/lib/phone";
 import { Button, ErrorBox, Field, Input } from "@/components/ui";
+import { PhoneInput } from "@/components/PhoneInput";
+import { COUNTRIES, countryForTimezone, fullDigits, type Country } from "@/lib/countries";
 
 /** Pagina principală: doar autentificare. Angajații intră cu telefonul și codul primit de la administrator. */
 export default function LoginPage() {
@@ -13,13 +15,21 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEmail = looksLikeEmail(login);
-  useEffect(() => { void setScreenSecure(true); }, []);
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
+  useEffect(() => {
+    void setScreenSecure(true);
+    // țara: ultima folosită pe acest telefon, altfel după fusul orar al telefonului
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("dyas.login.country"); } catch { /* ignoră */ }
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setCountry(COUNTRIES.find((c) => c.code === saved) ?? countryForTimezone(tz));
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      const email = isEmail ? login.trim() : phoneLoginEmail(login);
+      const email = isEmail ? login.trim() : phoneLoginEmail("+" + fullDigits(country.dial, login));
       const { error } = await supabase().auth.signInWithPassword({ email, password: secret.trim() });
       if (error) {
         if (error.message.includes("Invalid login credentials")) {
@@ -27,6 +37,7 @@ export default function LoginPage() {
         }
         throw error;
       }
+      if (!isEmail) { try { localStorage.setItem("dyas.login.country", country.code); } catch { /* ignoră */ } }
       const next = new URLSearchParams(window.location.search).get("next");
       window.location.href = next && next.startsWith("/") ? next : "/";
     } catch (err) {
@@ -47,8 +58,9 @@ export default function LoginPage() {
         </div>
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h1 className="text-lg font-semibold">Autentificare</h1>
-          <Field label="Număr de telefon" hint={isEmail ? "Autentificare cu email (administrator)." : "Numărul tău de WhatsApp, ex. 0722 123 456."}>
-            <Input autoComplete="username" inputMode={isEmail ? "email" : "tel"} required value={login} onChange={(e) => setLogin(e.target.value)} placeholder="07xx xxx xxx" />
+          <Field label="Număr de telefon" hint={isEmail ? "Autentificare cu email (administrator)." : "Alege țara și scrie numărul tău de WhatsApp."}>
+            <PhoneInput label="Număr de telefon" autoComplete="username" required showCountry={!isEmail} inputMode={isEmail ? "email" : "tel"}
+              country={country} local={login} onCountry={setCountry} onLocal={setLogin} />
           </Field>
           <Field label={isEmail ? "Parolă" : "Cod de acces"} hint={isEmail ? undefined : "Codul de 6 cifre primit de la administrator."}>
             <Input type="password" autoComplete="current-password" inputMode={isEmail ? "text" : "numeric"} required value={secret} onChange={(e) => setSecret(e.target.value)}

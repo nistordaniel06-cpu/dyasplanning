@@ -160,3 +160,31 @@ describe("deviceLabel", () => {
     expect(deviceLabel("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36 Edg/131.0")).toBe("Windows · Edge");
   });
 });
+
+import { COUNTRIES, formatStored, fullDigits, phoneProblem, splitStored } from "./countries";
+describe("telefoane din orice țară", () => {
+  const nl = COUNTRIES.find((c) => c.code === "NL")!, ro = COUNTRIES[0], ita = COUNTRIES.find((c) => c.code === "IT")!;
+  it("număr local + țară → prefix corect", () => {
+    expect(fullDigits("31", "06 1234 5678")).toBe("31612345678");
+    expect(fullDigits("40", "0722 100 003")).toBe("40722100003");
+    expect(fullDigits("49", "0151 2345 6789")).toBe("4915123456789");
+    expect(fullDigits("39", "347 123 4567")).toBe("393471234567");
+    expect(fullDigits("40", "+31 6 1234 5678")).toBe("31612345678"); // prefixul scris câștigă
+    expect(fullDigits("40", "0031612345678")).toBe("31612345678");
+  });
+  it("salvare + editare", () => {
+    expect(formatStored("31", "06 1234 5678")).toBe("+31 612345678");
+    expect(formatStored("373", "069 123 456")).toBe("+373 69123456");
+    expect(splitStored("+31 612345678", ro)).toEqual({ country: nl, local: "612345678" });
+    expect(splitStored("0722 100 003", nl)).toEqual({ country: ro, local: "0722100003" });
+    expect(splitStored("+39 3471234567", ro).country).toEqual(ita);
+  });
+  it("același cont ca în baza de date (norm_phone)", () => {
+    expect(normPhone(formatStored("31", "06 1234 5678"))).toBe("31612345678");
+    expect(normPhone(formatStored("40", "0722 100 003"))).toBe(normPhone("0722 100 003"));
+  });
+  it("validare lungime", () => {
+    expect(phoneProblem("31", "123")).toMatch(/scurt/);
+    expect(phoneProblem("31", "06 1234 5678")).toBeNull();
+  });
+});

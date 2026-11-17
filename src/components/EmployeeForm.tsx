@@ -6,6 +6,8 @@ import { humanError } from "@/lib/errors";
 import { WEEKDAY_SHORT } from "@/lib/time";
 import type { Employee, Team, Vehicle } from "@/lib/types";
 import { Button, ErrorBox, Field, Input, Modal, Select, cx } from "./ui";
+import { PhoneInput } from "./PhoneInput";
+import { countryForTimezone, formatStored, phoneProblem, splitStored } from "@/lib/countries";
 
 export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved }: { employee?: Employee | null; teams: Team[]; vehicles?: Vehicle[]; onClose: () => void; onSaved: (e: Employee) => void }) {
   const { company } = useSession();
@@ -18,12 +20,17 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const initialPhone = splitStored(employee?.phone, countryForTimezone(company?.timezone));
+  const [country, setCountry] = useState(initialPhone.country);
+  const [local, setLocal] = useState(initialPhone.local);
+  const phoneErr = phoneProblem(country.dial, local);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (phoneErr) { setError(`Telefon: ${phoneErr}`); return; }
     setBusy(true); setError(null);
     const payload = {
-      full_name: f.full_name.trim(), phone: f.phone.trim() || null, trade: f.trade.trim() || null,
+      full_name: f.full_name.trim(), phone: formatStored(country.dial, local) || null, trade: f.trade.trim() || null,
       skills: f.skills.split(",").map((s) => s.trim()).filter(Boolean), team_id: f.team_id || null,
       work_start: f.work_start, work_end: f.work_end, work_days: [...f.work_days].sort(), active: f.active,
       is_driver: f.is_driver, default_vehicle_id: f.is_driver && f.default_vehicle_id ? f.default_vehicle_id : null,
@@ -43,7 +50,9 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
       <form id="emp-form" onSubmit={save} className="space-y-4">
         <Field label="Nume și prenume"><Input required value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Telefon (WhatsApp)" hint="Cu acest număr intră în aplicație. Din afara României: cu prefix, ex. +31…"><Input type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+          <Field className="sm:col-span-2" label="Telefon (WhatsApp)" error={phoneErr} hint="Alege țara numărului. Cu acest număr intră în aplicație.">
+            <PhoneInput label="Telefon (WhatsApp)" country={country} local={local} onCountry={setCountry} onLocal={setLocal} />
+          </Field>
           <Field label="Meserie"><Input value={f.trade} onChange={(e) => setF({ ...f, trade: e.target.value })} placeholder="ex. Electrician" /></Field>
         </div>
         <Field label="Competențe" hint="Separate prin virgulă, ex. rigips, gresie, zugrăveli"><Input value={f.skills} onChange={(e) => setF({ ...f, skills: e.target.value })} /></Field>
