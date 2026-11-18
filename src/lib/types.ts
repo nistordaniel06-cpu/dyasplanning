@@ -13,6 +13,7 @@ export interface Company {
   default_work_start?: string; // "07:00:00"
   default_work_end?: string;
   default_break_minutes?: number;
+  last_backup_at?: string | null;
   app_name?: string | null;
   app_slug?: string | null;
   brand_color?: string | null;

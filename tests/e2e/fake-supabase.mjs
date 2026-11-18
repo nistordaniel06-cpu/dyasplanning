@@ -129,7 +129,7 @@ async function rest(req, res, url, sub) {
     const table = ident(path);
     const args = [];
     if (req.method === "GET") {
-      const r = await c.query(`select * from ${table}${buildWhere(params, args)}${buildOrder(params)}${params.get("limit") ? ` limit ${Number(params.get("limit"))}` : ""}`, args);
+      const r = await c.query(`select * from ${table}${buildWhere(params, args)}${buildOrder(params)}${params.get("limit") ? ` limit ${Number(params.get("limit"))}` : ""}${params.get("offset") ? ` offset ${Number(params.get("offset"))}` : ""}`, args);
       return { rows: r.rows };
     }
     if (req.method === "POST") {

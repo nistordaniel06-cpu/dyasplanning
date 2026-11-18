@@ -70,6 +70,12 @@ function Dashboard() {
         </>} />
 
       <AppSetupCard compact />
+      {company && Date.now() - new Date(company.created_at).getTime() > 14 * 864e5
+        && (!company.last_backup_at || Date.now() - new Date(company.last_backup_at).getTime() > 30 * 864e5) && (
+        <Link href="/setari" className="block rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 hover:bg-amber-100">
+          <strong>Fă un backup al datelor firmei.</strong> {company.last_backup_at ? "Ultimul backup e mai vechi de o lună." : "Nu ai făcut încă niciun backup."} Durează un minut, din Setări → Backup.
+        </Link>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Lucrări active" value={activeProjects.length} sub={`${d.projects.filter((p) => p.status === "planificata").length} planificate`} href="/lucrari" />
         <Stat label="Programați azi" value={scheduledIds.size} sub={`din ${d.employees.length} angajați activi`} href="/planning" />

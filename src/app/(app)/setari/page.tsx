@@ -1,4 +1,5 @@
 "use client";
+import { BackupCard } from "@/components/BackupCard";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { RequireRole } from "@/components/shell";
@@ -77,6 +78,7 @@ function Setari() {
       <PageHeader title="Setări" />
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
 
+      <BackupCard />
       <Card title="Firmă">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Numele firmei" className="sm:col-span-2"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
