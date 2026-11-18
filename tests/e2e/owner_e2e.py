@@ -16,7 +16,7 @@ with sync_playwright() as p:
         pg.on("dialog", lambda d: d.accept())
         return pg
     def signup(pg, email, firm, name):
-        pg.goto(B+"/creare-cont-dyas-7k2m")
+        pg.goto(B+"/firma-noua-5lo4x0")
         pg.get_by_label("Email").fill(email); pg.get_by_label("Parolă").fill("parola1234"); pg.get_by_role("button", name="Creează cont").click()
         pg.wait_for_url(re.compile("/onboarding")); pg.get_by_role("tab", name="Înființez firma").click()
         pg.get_by_label("Numele firmei").fill(firm); pg.get_by_label("Numele tău").fill(name); pg.get_by_role("button", name="Creează firma").click()
@@ -120,7 +120,7 @@ with sync_playwright() as p:
     # înscrieri închise
     o.get_by_role("tab", name="Platformă").click(); o.get_by_role("button", name="Închide înscrierile").click()
     expect(o.get_by_role("button", name="Deschide înscrierile")).to_be_visible()
-    n2=ctx(); n2.goto(B+"/creare-cont-dyas-7k2m"); n2.get_by_label("Email").fill("nou@x.ro"); n2.get_by_label("Parolă").fill("parola1234"); n2.get_by_role("button", name="Creează cont").click()
+    n2=ctx(); n2.goto(B+"/firma-noua-5lo4x0"); n2.get_by_label("Email").fill("nou@x.ro"); n2.get_by_label("Parolă").fill("parola1234"); n2.get_by_role("button", name="Creează cont").click()
     expect(n2.get_by_text("Înscrierea firmelor noi este închisă momentan.")).to_be_visible()
     assert sql("select count(*) from auth.users where email='nou@x.ro'")=="0"
     o.get_by_role("button", name="Deschide înscrierile").click(); expect(o.get_by_role("button", name="Închide înscrierile")).to_be_visible()

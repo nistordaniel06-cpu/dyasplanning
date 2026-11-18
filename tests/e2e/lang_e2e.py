@@ -53,7 +53,7 @@ with sync_playwright() as p:
     a.goto(B+"/dashboard"); a.get_by_role("button", name="RO").first.click(); a.wait_for_load_state()
     expect(a.get_by_role("heading", name="Dashboard")).to_be_visible(); expect(a.get_by_role("link", name="Lucrări").first).to_be_visible(); ok("înapoi în română")
     # proprietar fără firmă: poate ieși din cont pe telefon
-    o=ctx(390,844,True); o.goto(B+"/creare-cont-dyas-7k2m"); o.get_by_label("Email").fill("owner@dyas.ro"); o.get_by_label("Parolă").fill("parola1234"); o.get_by_role("button", name="Creează cont").click()
+    o=ctx(390,844,True); o.goto(B+"/firma-noua-5lo4x0"); o.get_by_label("Email").fill("owner@dyas.ro"); o.get_by_label("Parolă").fill("parola1234"); o.get_by_role("button", name="Creează cont").click()
     o.wait_for_url(re.compile("/onboarding")); sql("insert into platform_owners(user_id) select id from auth.users where email='owner@dyas.ro'")
     o.goto(B+"/"); o.wait_for_url(re.compile("/proprietar"))
     o.locator("nav").get_by_role("button", name="Ieșire").click(); o.wait_for_url(re.compile("/login")); ok("proprietarul fără firmă iese din cont de pe telefon")

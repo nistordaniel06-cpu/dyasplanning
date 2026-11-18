@@ -29,4 +29,4 @@ export function whatsappLink(phone: string, text: string): string {
 }
 
 /** Adresa ascunsă pentru crearea contului de administrator (nu apare nicăieri în aplicație). */
-export const HIDDEN_SIGNUP_PATH = "/creare-cont-dyas-7k2m";
+export const HIDDEN_SIGNUP_PATH = "/firma-noua-5lo4x0";

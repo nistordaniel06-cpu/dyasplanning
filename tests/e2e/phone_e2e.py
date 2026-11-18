@@ -11,7 +11,7 @@ with sync_playwright() as p:
         pg.on("console", lambda m: m.type=="error" and not re.search(r"WebSocket|realtime|Failed to load resource", m.text) and probs.append(m.text))
         return pg
     a=ctx(1280,860,False)
-    a.goto(B+"/creare-cont-dyas-7k2m")
+    a.goto(B+"/firma-noua-5lo4x0")
     a.get_by_label("Email").fill("sef@bouw.nl"); a.get_by_label("Parolă").fill("parola1234"); a.get_by_role("button", name="Creează cont").click()
     a.wait_for_url(re.compile("/onboarding")); a.get_by_role("tab", name="Înființez firma").click()
     a.get_by_label("Numele firmei").fill("Bouw Team BV"); a.get_by_label("Numele tău").fill("Dani")

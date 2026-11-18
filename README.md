@@ -9,7 +9,7 @@ Răspunde rapid la întrebările: **cine lucrează azi, la ce lucrare și adres�
 
 ## Ce conține prima versiune
 
-- Pagina principală = doar autentificare. Angajații intră cu **numărul de telefon + un cod de 6 cifre** generat de administrator (trimis pe WhatsApp). Contul de administrator se creează pe o adresă ascunsă: `/creare-cont-dyas-7k2m`
+- Pagina principală = doar autentificare. Angajații intră cu **numărul de telefon + un cod de 6 cifre** generat de administrator (trimis pe WhatsApp). Contul de administrator se creează pe o adresă ascunsă: `/firma-noua-5lo4x0`
 - Firme izolate între ele, roluri (administrator, șef de echipă, angajat)
 - **Notificări** (în aplicație și push pe telefon) la program nou / modificat / anulat și la pontaj respins
 - **Chat**: toată firma, câte un grup pe lucrare, mesaje private
@@ -44,7 +44,7 @@ Răspunde rapid la întrebările: **cine lucrează azi, la ce lucrare și adres�
 5. Înapoi în Supabase: **Authentication → URL Configuration → Site URL** = adresa Vercel (ex. `https://dyasplanning.vercel.app`).
 
 ### 3. Prima utilizare
-1. Deschide `https://<site>/creare-cont-dyas-7k2m` → creează contul → **Înființez firma**. Devii administrator.
+1. Deschide `https://<site>/firma-noua-5lo4x0` → creează contul → **Înființez firma**. Devii administrator.
 2. **Angajați → Adaugă angajat** (pentru cei fără telefon nu e nevoie de cont).
 3. **Lucrări → Adaugă lucrare** → adaugă misiunile.
 4. **Planning → Alocă angajați**.
