@@ -10,6 +10,7 @@ import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
 import { AnnouncementBar } from "./Announcement";
 import { Toasts } from "./Toasts";
+import { BrandLogo, BrandName } from "./Brand";
 import { OfflineSync } from "./OfflineSync";
 import { PresenceAndLocation } from "./LocationConsent";
 import { LanguageSwitch } from "./LanguageSwitch";
@@ -97,13 +98,13 @@ function FrameInner({ children }: { children: ReactNode }) {
   const [more, setMore] = useState(false);
   const ownerItem = { href: "/proprietar", label: "Proprietar", icon: ShieldCheck };
   const nav = s.ownerOnly
-    ? [ownerItem, { href: "/notificari", label: "Notificări", icon: Bell }]
+    ? [ownerItem, { href: "/notificari", label: "Notificări", icon: Bell }, { href: "/profil", label: "Profil", icon: User }]
     : s.isOwner ? [...navFor(s.role), ownerItem] : navFor(s.role);
 
   useEffect(() => {
     if (s.ownerOnly) {
       // contul de proprietar fără firmă: doar panoul și notificările
-      if (!path.startsWith("/proprietar") && !path.startsWith("/notificari")) router.replace("/proprietar");
+      if (!path.startsWith("/proprietar") && !path.startsWith("/notificari") && !path.startsWith("/profil")) router.replace("/proprietar");
       return;
     }
     if (!s.membership) window.location.href = "/onboarding";
@@ -121,9 +122,9 @@ function FrameInner({ children }: { children: ReactNode }) {
     <div className="min-h-dvh md:flex">
       <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex md:sticky md:top-0 md:h-dvh">
         <div className="flex items-center gap-2 px-5 py-5">
-          <img src="/icon.svg" alt="" className="h-8 w-8" />
+          <BrandLogo className="h-8 w-8" />
           <div className="min-w-0 flex-1">
-            <div className="font-bold leading-tight">DYASPlanning</div>
+            <div className="font-bold leading-tight"><BrandName /></div>
             <div className="truncate text-xs text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
           </div>
           <BellLink className="-mr-2" />
@@ -149,9 +150,9 @@ function FrameInner({ children }: { children: ReactNode }) {
       </aside>
 
       <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-slate-200 bg-white/95 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
-        <img src="/icon.svg" alt="" className="h-7 w-7" />
+        <BrandLogo className="h-7 w-7" />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-bold leading-tight">DYASPlanning</div>
+          <div className="text-sm font-bold leading-tight"><BrandName /></div>
           <div className="truncate text-[11px] text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
         </div>
         <LanguageSwitch />

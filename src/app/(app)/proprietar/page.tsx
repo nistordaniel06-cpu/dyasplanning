@@ -6,6 +6,8 @@ import { ChevronDown, ChevronUp, Copy, Crosshair, Globe, MapPin, Megaphone, Sear
 import dynamic from "next/dynamic";
 import type { MapPoint } from "@/components/owner/OwnerMap";
 import { UsageReport, type Usage } from "@/components/UsageReport";
+import { CompanyEditor } from "@/components/owner/CompanyEditor";
+import { NewCompanyButton } from "@/components/owner/NewCompany";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, Stat, Tabs, Textarea, cx } from "@/components/ui";
 const OwnerMap = dynamic(() => import("@/components/owner/OwnerMap").then((m) => m.OwnerMap), { ssr: false, loading: () => <Loading /> });
 import { useSession } from "@/lib/session";
@@ -29,6 +31,8 @@ interface OwnerCompany {
   trial_until: string | null; owner_note: string | null; admin_email: string | null; users: number; employees: number;
   projects: number; assignments_7d: number; time_entries_7d: number; last_sign_in: string | null;
   last_city: string | null; last_country: string | null;
+  default_work_start: string | null; default_work_end: string | null; default_break_minutes: number | null;
+  app_name: string | null; app_slug: string | null; brand_color: string | null;
 }
 interface OwnerUser {
   user_id: string; login: string; name: string | null; role: AppRole; created_at: string; last_sign_in: string | null;
@@ -195,6 +199,7 @@ function CompaniesTab({ onLogins, onUser }: { onLogins: (id: string) => void; on
           <option value="activ">Active</option>
           <option value="suspendat">Suspendate</option>
         </Select>
+        <NewCompanyButton onCreated={async (id) => { setSearch(""); setStatus(""); await q.reload(); setOpen(id); }} />
       </div>
       {list.length === 0 && <Empty title="Nicio firmă găsită" />}
       {list.map((c) => {
@@ -283,6 +288,8 @@ function CompanyDetails({ c, onSaved, onLogins, onDeleted, onUser }: { c: OwnerC
           : <Button onClick={() => save("activ")} disabled={busy}>Reactivează firma</Button>}
         <Button variant="ghost" onClick={onLogins}><MapPin className="h-4 w-4" /> Conectările firmei</Button>
       </div>
+
+      <CompanyEditor c={c} onSaved={onSaved} />
 
       <div className="rounded-lg border border-slate-200 p-3">
         <button className="flex w-full items-center justify-between text-sm font-semibold" onClick={() => setUsageOpen(!usageOpen)}>

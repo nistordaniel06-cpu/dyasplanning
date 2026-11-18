@@ -5,6 +5,7 @@ import { supabase } from "./supabase/client";
 import { humanError } from "./errors";
 import { isNetworkError } from "./offline";
 import { nativePushToken } from "./native";
+import { DEFAULT_BRAND, brandFromCompany, setBrand } from "./brand";
 import type { AppRole, Company, Employee, Membership } from "./types";
 
 export interface SessionValue {
@@ -60,8 +61,9 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
       const { data: u, error: ue } = await sb.auth.getUser();
       if (ue && isNetworkError(ue) && await offlineFallback()) return;
       if (ue || !u.user) { setState({ status: "anon" }); return; }
+      const user: User = u.user;
       const [{ data: m, error: me }, own] = await Promise.all([
-        sb.from("memberships").select("*").eq("user_id", u.user.id).maybeSingle(),
+        sb.from("memberships").select("*").eq("user_id", user.id).maybeSingle(),
         sb.rpc("is_platform_owner"),
       ]);
       if (me) throw me;
@@ -70,7 +72,7 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
         const st = await sb.rpc("my_company_status");
         if (st.data === "suspendat") {
           // proprietarul păstrează panoul chiar dacă firma lui e suspendată
-          if (isOwner) { setState({ status: "ready", user: u.user, membership: null, company: null, employee: null, isOwner, ownerOnly: true }); return; }
+          if (isOwner) { setState({ status: "ready", user, membership: null, company: null, employee: null, isOwner, ownerOnly: true }); return; }
           setState({ status: "suspended" }); return;
         }
       }
@@ -85,8 +87,10 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
         company = c.data as Company;
         employee = (e.data as Employee) ?? null;
       }
-      const ready = { user: u.user, membership: (m as Membership) ?? null, company, employee, isOwner, ownerOnly: isOwner && !m };
+      const ready = { user, membership: (m as Membership) ?? null, company, employee, isOwner, ownerOnly: isOwner && !m };
       try { localStorage.setItem(SESSION_CACHE, JSON.stringify(ready)); } catch { /* ignoră */ }
+      // aplicația firmei: nume și culori (proprietarul fără firmă vede DYASPlanning)
+      if (company) setBrand(brandFromCompany(company)); else if (isOwner) setBrand(DEFAULT_BRAND);
       setState({ status: "ready", ...ready });
     } catch (err) {
       if (isNetworkError(err) && await offlineFallback()) return;

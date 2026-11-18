@@ -2,6 +2,7 @@
 import { LogOut } from "lucide-react";
 import { Button, Card, ErrorBox, Loading, PageHeader } from "@/components/ui";
 import { AppSetupCard } from "@/components/AppSetup";
+import { ChangePasswordCard } from "@/components/ChangePassword";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { loadTeams, loadTimeEntries } from "@/lib/data";
@@ -70,6 +71,7 @@ export default function ProfilPage() {
           )}
         </Card>
       )}
+      {!user.email?.endsWith("@telefon.dyasplanning.app") && <ChangePasswordCard />}
       <Button size="lg" variant="danger" className="w-full" onClick={signOut}><LogOut className="h-5 w-5" /> Ieșire din cont</Button>
     </div>
   );

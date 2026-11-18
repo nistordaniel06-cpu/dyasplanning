@@ -40,7 +40,7 @@ with sync_playwright() as p:
     o.get_by_text("Client Construct SRL").click()
     expect(o.get_by_text("Conturi (1)")).to_be_visible()
     o.get_by_label("Plan").select_option("proba"); o.get_by_label("Perioadă de probă până la").fill("2026-12-31")
-    o.get_by_label("Notă internă (o vezi doar tu)").fill("A cerut demo, sună în decembrie"); o.get_by_role("button", name="Salvează").click()
+    o.get_by_label("Notă internă (o vezi doar tu)").fill("A cerut demo, sună în decembrie"); o.get_by_role("button", name="Salvează", exact=True).click()
     expect(o.get_by_text("Salvat.")).to_be_visible()
     o.screenshot(path="shots/71_proprietar_firme.png", full_page=True)
     assert sql("select plan||'|'||trial_until||'|'||owner_note from companies where name='Client Construct SRL'")=="proba|2026-12-31|A cerut demo, sună în decembrie"
@@ -58,7 +58,7 @@ with sync_playwright() as p:
     o.screenshot(path="shots/73_proprietar_conectari.png", full_page=True); ok(f"conectări înregistrate și afișate ({n})")
     # activitatea adminului unei firme
     c.goto(B+"/lucrari?nou=1"); d=c.get_by_role("dialog"); d.get_by_label("Nume lucrare").fill("Vilă Snagov"); d.get_by_role("button", name="Adaugă lucrare").click(); c.wait_for_url(re.compile("/lucrari/"))
-    c.get_by_role("button", name="Modifică").first.click(); d=c.get_by_role("dialog"); d.get_by_label("Localitate").fill("Snagov"); d.get_by_label("Client").fill("Familia Ionescu"); d.get_by_role("button", name="Salvează").click(); expect(d).to_be_hidden()
+    c.get_by_role("button", name="Modifică").first.click(); d=c.get_by_role("dialog"); d.get_by_label("Localitate").fill("Snagov"); d.get_by_label("Client").fill("Familia Ionescu"); d.get_by_role("button", name="Salvează", exact=True).click(); expect(d).to_be_hidden()
     o.goto(B+"/proprietar?tab=activitate"); expect(o.get_by_text("Cristi a adăugat lucrarea „Vilă Snagov”")).to_be_visible()
     expect(o.get_by_text(re.compile(r"Cristi a modificat lucrarea „Vilă Snagov” \((client, localitate|localitate, client)\)"))).to_be_visible()
     o.get_by_role("button", name="Vezi ce s-a schimbat").first.click(); expect(o.get_by_text("Familia Ionescu")).to_be_visible()

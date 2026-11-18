@@ -7,6 +7,7 @@ import { humanError } from "@/lib/errors";
 import { looksLikeEmail, phoneLoginEmail } from "@/lib/phone";
 import { Button, ErrorBox, Field, Input } from "@/components/ui";
 import { PhoneInput } from "@/components/PhoneInput";
+import { BrandLogo, BrandName } from "@/components/Brand";
 import { COUNTRIES, countryForTimezone, fullDigits, type Country } from "@/lib/countries";
 
 /** Pagina principală: doar autentificare. Angajații intră cu telefonul și codul primit de la administrator. */
@@ -52,9 +53,9 @@ export default function LoginPage() {
       <LanguageSwitch className="fixed right-3 top-3 z-50" />
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
-          <img src="/icon.svg" alt="" className="h-12 w-12" />
+          <BrandLogo className="h-12 w-12" />
           <div>
-            <div className="text-2xl font-bold">DYASPlanning</div>
+            <div className="text-2xl font-bold"><BrandName /></div>
             <div className="text-sm text-slate-600">Planning și pontaj pentru șantier</div>
           </div>
         </div>

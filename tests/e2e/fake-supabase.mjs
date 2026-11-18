@@ -192,6 +192,13 @@ async function auth(req, res, url, bearer) {
         return send(res, 200, session({ ...r.rows[0], created_at: new Date().toISOString() }));
       }
     }
+    if (p === "/user" && req.method === "PUT") {
+      const claims = verifyJwt(bearer);
+      if (!claims?.sub) return send(res, 401, { code: 401, error_code: "bad_jwt", msg: "invalid JWT" });
+      if (body?.password) await c.query("update auth.users set encrypted_password = extensions.crypt($2, extensions.gen_salt('bf')) where id = $1", [claims.sub, body.password]);
+      const r = await c.query("select id, email from auth.users where id = $1", [claims.sub]);
+      return send(res, 200, userObj({ ...r.rows[0], created_at: new Date().toISOString() }));
+    }
     if (p === "/user") {
       const claims = verifyJwt(bearer);
       if (!claims?.sub) return send(res, 401, { code: 401, error_code: "bad_jwt", msg: "invalid JWT" });

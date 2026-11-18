@@ -782,7 +782,7 @@
 "pontaje · total": "timesheets · total",
 "proba a expirat": "trial expired",
 "programul tău": "your schedule",
-"până la": "until",
+"până la": "to",
 "sau blocate": "or blocked",
 "se calculează după următoarea citire": "calculated after the next reading",
 "săpt. curentă": "this week",
@@ -1149,7 +1149,43 @@
 "✓ Pontat cu butonul „Am început / Am terminat”": "✓ Clocked with “I've started / I'm done”",
 "🎤 Mesaj vocal": "🎤 Voice message",
 "Încarcă poze din galerie": "Upload photos from gallery",
-"📷 Poză": "📷 Photo"
+"Datele firmei": "Company details",
+"Program de la": "Hours from",
+"Aplicația firmei": "Company app",
+"Numele aplicației": "App name",
+"Link propriu": "Own link",
+"Generează": "Generate",
+"Angajații firmei văd numele și culorile de aici, iar aplicația instalată pe telefon are numele ales. Gol = DYASPlanning.": "The company's employees see the name and colours set here, and the app installed on the phone gets the chosen name. Empty = DYASPlanning.",
+"Culoarea aplicației": "App colour",
+"altă culoare": "other colour",
+"Altă culoare": "Other colour",
+"Buton": "Button",
+"Linkul aplicației:": "App link:",
+"Copiat": "Copied",
+"Salvează firma și aplicația": "Save company and app",
+"Salvat. Utilizatorii firmei văd schimbările la următoarea deschidere a aplicației.": "Saved. The company's users will see the changes the next time they open the app.",
+"Linkul aplicației nu există": "This app link doesn't exist",
+"Verifică linkul primit sau cere unul nou administratorului.": "Check the link you received or ask the administrator for a new one.",
+"Mergi la autentificare": "Go to sign-in",
+"📷 Poză": "📷 Photo",
+"Numele administratorului": "Administrator name",
+"Email administrator": "Administrator email",
+"Cu acest email intră în aplicație.": "They sign in to the app with this email.",
+"Minim 8 caractere. O poate schimba după prima intrare.": "At least 8 characters. They can change it after the first sign-in.",
+"Firma a fost creată. Administratorul poate intra imediat cu emailul și parola de mai jos.": "The company was created. The administrator can sign in right away with the email and password below.",
+"Copiază datele": "Copy details",
+"Ascunde parola": "Hide password",
+"Arată parola": "Show password",
+"Parolă nouă": "New password",
+"Schimbă parola": "Change password",
+"Repetă parola nouă": "Repeat new password",
+"Salvează parola": "Save password",
+"Parola a fost schimbată.": "Your password was changed.",
+"Parolele nu coincid.": "The passwords don't match.",
+"Parola trebuie să aibă cel puțin 8 caractere.": "The password must have at least 8 characters.",
+"Adresa de email nu e validă.": "The email address is not valid.",
+"Scrie numele firmei.": "Enter the company name.",
+"Scrie numele administratorului.": "Enter the administrator's name."
 },
 "patterns": [
 [
@@ -1451,6 +1487,14 @@
 [
 "^(.+) a (adăugat|modificat|șters) (\\d+) (\\S+)$",
 "$1 $2 $3 $4"
+],
+[
+"^Există deja un cont cu emailul (.+)\\.$",
+"An account with the email $1 already exists."
+],
+[
+"^Culoare (#[0-9a-f]{6})$",
+"Colour $1"
 ],
 [
 "^Se trimit datele salvate pe telefon \\((\\d+)\\)\\.$",
