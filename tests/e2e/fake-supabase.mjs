@@ -252,39 +252,6 @@ async function storage(req, res, url, sub) {
   return send(res, 404, { msg: `storage ${req.method} ${p} nesuportat` });
 }
 
-// ---- Claude API simulat (pentru testele asistentului): răspunsuri scrise dinainte, cu instrumente ----
-const plusDays = (n) => { const d = new Date(Date.now() + n * 864e5); return d.toISOString().slice(0, 10); };
-function fakeClaude(body) {
-  const msgs = body.messages ?? [];
-  const last = msgs[msgs.length - 1];
-  const norm = (t) => String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const reply = (content) => ({ id: "msg_fake", type: "message", role: "assistant", model: body.model, stop_reason: content.some((c) => c.type === "tool_use") ? "tool_use" : "end_turn", content });
-  const tool = (name, input) => reply([{ type: "tool_use", id: "tu_" + Math.random().toString(36).slice(2), name, input }]);
-  if (typeof last.content === "string") {
-    const t = norm(last.content);
-    if (t.includes("vila otopeni")) return tool("cauta_angajati", { text: "" });
-    if (t.includes("masina")) return reply([{ type: "text", text: "Adaug mașina." }, { type: "tool_use", id: "tu_m", name: "propune_actiuni", input: { rezumat: "Adaug mașina Ford Transit", actiuni: [{ tip: "adauga_masina", nume: "Ford Transit", nr_inmatriculare: "b 123 abc" }] } }]);
-    if (t.includes("cine lucreaza")) return tool("program", { de_la: plusDays(1), pana_la: plusDays(1) });
-    if (t.includes("angajat nou")) return reply([{ type: "tool_use", id: "tu_a", name: "propune_actiuni", input: { rezumat: "Adaug angajatul", actiuni: [{ tip: "adauga_angajat", nume: "Marius Popescu", meserie: "Zidar", telefon: "0722 123 456" }] } }]);
-    return reply([{ type: "text", text: "Bună! Cu ce te ajut?" }]);
-  }
-  // rezultatul unui instrument
-  const prev = msgs[msgs.length - 2];
-  const used = (prev?.content ?? []).find((c) => c.type === "tool_use");
-  const data = JSON.parse(last.content[0].content);
-  if (used?.name === "cauta_angajati") {
-    const ion = data.find((e) => e.nume === "Ion Pop");
-    return reply([{ type: "text", text: "Am pregătit lucrarea și programul." }, { type: "tool_use", id: "tu_p", name: "propune_actiuni", input: {
-      rezumat: "Creez Vila Otopeni și îl aloc pe Ion Pop o săptămână",
-      actiuni: [
-        { tip: "creeaza_lucrare", ref: "L1", nume: "Vila Otopeni", oras: "Otopeni", data_inceput: plusDays(1) },
-        { tip: "aloca_angajati", lucrare_ref: "L1", angajati_ids: [ion.id], data_inceput: plusDays(1), data_sfarsit: plusDays(7) },
-      ] } }]);
-  }
-  if (used?.name === "program") return reply([{ type: "text", text: "Mâine lucrează: " + [...new Set(data.map((r) => `${r.angajat} la ${r.lucrare}`))].join(", ") }]);
-  return reply([{ type: "text", text: "Gata." }]);
-}
-
 http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") return send(res, 204);
   const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -295,7 +262,6 @@ http.createServer(async (req, res) => {
       const claims = verifyJwt(bearer);
       return await rest(req, res, url, claims?.sub ?? null);
     }
-    if (url.pathname === "/anthropic/v1/messages") return send(res, 200, fakeClaude(await readBody(req)));
     if (url.pathname.startsWith("/storage/v1")) return await storage(req, res, url, verifyJwt(bearer)?.sub ?? null);
     send(res, 404, { msg: "not found" });
   } catch (e) {

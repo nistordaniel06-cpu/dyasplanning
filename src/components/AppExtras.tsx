@@ -45,9 +45,9 @@ export function WhatsNew() {
   );
 }
 
-interface Status { maintenance: boolean; message: string | null; until: string | null; assistant?: boolean }
+interface Status { maintenance: boolean; message: string | null; until: string | null }
 
-// o singură verificare pentru toată aplicația (mentenanță + asistent), la 60 s și la revenirea în aplicație
+// o singură verificare pentru toată aplicația (mentenanță), la 60 s și la revenirea în aplicație
 let statusCache: Status | null = null;
 const statusSubs = new Set<(s: Status) => void>();
 let statusTimer: ReturnType<typeof setInterval> | null = null;
@@ -74,13 +74,6 @@ export function useAppStatus(): Status | null {
     return () => { statusSubs.delete(setSt); };
   }, []);
   return st;
-}
-
-/** Asistentul AI e pornit pentru firma asta (și global)? */
-export function useAssistantEnabled(): boolean {
-  const s = useSession();
-  const st = useAppStatus();
-  return s.membership?.role === "admin" && s.company?.assistant_enabled !== false && st?.assistant !== false;
 }
 
 export function MaintenanceScreen({ status }: { status: Status }) {

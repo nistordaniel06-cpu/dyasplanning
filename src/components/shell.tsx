@@ -4,14 +4,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
-  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, LifeBuoy, ShieldCheck, Sparkles, Sun, User, Users, X,
+  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, LifeBuoy, ShieldCheck, Sun, User, Users, X,
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
 import { AnnouncementBar } from "./Announcement";
 import { Toasts } from "./Toasts";
 import { BrandLogo, BrandName } from "./Brand";
-import { HelpLink, MaintenanceGate, WhatsNew, useAssistantEnabled } from "./AppExtras";
+import { HelpLink, MaintenanceGate, WhatsNew } from "./AppExtras";
 import { OfflineSync } from "./OfflineSync";
 import { PresenceAndLocation } from "./LocationConsent";
 import { LanguageSwitch } from "./LanguageSwitch";
@@ -29,7 +29,6 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/planning", label: "Planning", icon: CalendarRange },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/lucrari", label: "Lucrări", icon: Hammer },
-  { href: "/asistent", label: "Asistent AI", icon: Sparkles },
   { href: "/angajati", label: "Angajați", icon: Users },
   { href: "/pontaje", label: "Pontaje", icon: ClipboardCheck },
   { href: "/rapoarte", label: "Rapoarte", icon: BarChart3 },
@@ -99,10 +98,9 @@ function FrameInner({ children }: { children: ReactNode }) {
   const path = usePathname();
   const [more, setMore] = useState(false);
   const ownerItem = { href: "/proprietar", label: "Proprietar", icon: ShieldCheck };
-  const assistant = useAssistantEnabled();
-  const nav = (s.ownerOnly
+  const nav = s.ownerOnly
     ? [ownerItem, { href: "/notificari", label: "Notificări", icon: Bell }, { href: "/profil", label: "Profil", icon: User }]
-    : s.isOwner ? [...navFor(s.role), ownerItem] : navFor(s.role)).filter((n) => n.href !== "/asistent" || assistant);
+    : s.isOwner ? [...navFor(s.role), ownerItem] : navFor(s.role);
 
   useEffect(() => {
     if (s.ownerOnly) {

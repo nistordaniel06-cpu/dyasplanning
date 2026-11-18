@@ -14,7 +14,6 @@ export interface Company {
   default_work_end?: string;
   default_break_minutes?: number;
   last_backup_at?: string | null;
-  assistant_enabled?: boolean;
   app_name?: string | null;
   app_slug?: string | null;
   brand_color?: string | null;
