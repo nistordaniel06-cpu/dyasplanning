@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { Plus, Sparkles } from "lucide-react";
+import { useAssistantEnabled } from "@/components/AppExtras";
 import { RequireRole } from "@/components/shell";
 import { AppSetupCard } from "@/components/AppSetup";
 import { Badge, Button, Card, ErrorBox, Loading, PageHeader, Stat, StatusBadge } from "@/components/ui";
@@ -22,6 +23,7 @@ export default function DashboardPage() {
 
 function Dashboard() {
   const { tz, company } = useSession();
+  const assistant = useAssistantEnabled();
   const today = todayIn(tz);
   const ws = startOfWeek(today), we = addDays(ws, 6);
 
@@ -65,7 +67,7 @@ function Dashboard() {
     <div className="space-y-5">
       <PageHeader title="Dashboard" subtitle={`${company?.name} · ${prettyDate(today)}`}
         actions={<>
-          <Link href="/asistent"><Button><Sparkles className="h-4 w-4 text-orange-600" />Asistent AI</Button></Link>
+          {assistant && <Link href="/asistent"><Button><Sparkles className="h-4 w-4 text-orange-600" />Asistent AI</Button></Link>}
           <Link href="/lucrari?nou=1"><Button><Plus className="h-4 w-4" />Adaugă lucrare</Button></Link>
           <Link href="/planning/aloca"><Button variant="primary"><Plus className="h-4 w-4" />Alocă angajați</Button></Link>
         </>} />

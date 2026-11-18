@@ -20,8 +20,14 @@ export async function contextFor(token: string): Promise<Ctx | { error: string; 
   if (!u.user) return { error: "Trebuie să fii autentificat.", status: 401 };
   const { data: m } = await sb.from("memberships").select("company_id, role").eq("user_id", u.user.id).maybeSingle();
   if (!m || m.role !== "admin") return { error: "Asistentul este disponibil doar pentru administratorii firmei.", status: 403 };
-  const { data: c } = await sb.from("companies").select("timezone, default_work_start, default_work_end, default_break_minutes, status").eq("id", m.company_id).single();
+  const [{ data: c }, { data: st }] = await Promise.all([
+    sb.from("companies").select("timezone, default_work_start, default_work_end, default_break_minutes, status, assistant_enabled").eq("id", m.company_id).single(),
+    sb.rpc("app_status"),
+  ]);
   if (c?.status === "suspendat") return { error: "Firma este suspendată.", status: 403 };
+  if (c?.assistant_enabled === false || (st as { assistant?: boolean } | null)?.assistant === false) {
+    return { error: "Asistentul AI este oprit. Îl poți porni din Setări → Asistent AI.", status: 403 };
+  }
   return {
     sb, userId: u.user.id, companyId: m.company_id as string, tz: (c?.timezone as string) ?? "Europe/Bucharest",
     schedule: { start: String(c?.default_work_start ?? "07:00").slice(0, 5), end: String(c?.default_work_end ?? "16:00").slice(0, 5), breakMin: Number(c?.default_break_minutes ?? 60) },

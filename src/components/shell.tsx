@@ -4,14 +4,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
-  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, ShieldCheck, Sparkles, Sun, User, Users, X,
+  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, LifeBuoy, ShieldCheck, Sparkles, Sun, User, Users, X,
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
 import { AnnouncementBar } from "./Announcement";
 import { Toasts } from "./Toasts";
 import { BrandLogo, BrandName } from "./Brand";
-import { HelpLink, MaintenanceGate, WhatsNew } from "./AppExtras";
+import { HelpLink, MaintenanceGate, WhatsNew, useAssistantEnabled } from "./AppExtras";
 import { OfflineSync } from "./OfflineSync";
 import { PresenceAndLocation } from "./LocationConsent";
 import { LanguageSwitch } from "./LanguageSwitch";
@@ -99,9 +99,10 @@ function FrameInner({ children }: { children: ReactNode }) {
   const path = usePathname();
   const [more, setMore] = useState(false);
   const ownerItem = { href: "/proprietar", label: "Proprietar", icon: ShieldCheck };
-  const nav = s.ownerOnly
+  const assistant = useAssistantEnabled();
+  const nav = (s.ownerOnly
     ? [ownerItem, { href: "/notificari", label: "Notificări", icon: Bell }, { href: "/profil", label: "Profil", icon: User }]
-    : s.isOwner ? [...navFor(s.role), ownerItem] : navFor(s.role);
+    : s.isOwner ? [...navFor(s.role), ownerItem] : navFor(s.role)).filter((n) => n.href !== "/asistent" || assistant);
 
   useEffect(() => {
     if (s.ownerOnly) {
@@ -129,7 +130,6 @@ function FrameInner({ children }: { children: ReactNode }) {
             <div className="font-bold leading-tight"><BrandName /></div>
             <div className="truncate text-xs text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
           </div>
-          {!s.ownerOnly && <HelpLink className="-mr-1" />}
           <BellLink className="-mr-2" />
         </div>
         <nav className="flex-1 space-y-1 px-3">
@@ -143,6 +143,11 @@ function FrameInner({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="border-t border-slate-200 p-4">
+          {!s.ownerOnly && (
+            <Link href={`/ajutor?din=${encodeURIComponent(path)}`} className={cx("-mx-3 mb-3 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium", path.startsWith("/ajutor") ? "bg-orange-50 text-orange-800" : "text-slate-700 hover:bg-slate-100")}>
+              <LifeBuoy className="h-5 w-5" aria-hidden /> Ajutor
+            </Link>
+          )}
           <div className="truncate text-sm font-semibold">{s.employee?.full_name ?? s.membership?.display_name ?? s.user.email}</div>
           <div className="text-xs text-slate-500">{s.ownerOnly ? "Proprietar" : s.role ? ROLE_LABEL[s.role] : ""}</div>
           <div className="mt-2 flex items-center justify-between">

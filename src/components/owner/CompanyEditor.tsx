@@ -10,7 +10,7 @@ import { Button, ErrorBox, Field, Input, Notice, Select, cx } from "../ui";
 export interface EditableCompany {
   id: string; name: string; timezone: string;
   default_work_start: string | null; default_work_end: string | null; default_break_minutes: number | null;
-  app_name: string | null; app_slug: string | null; brand_color: string | null;
+  app_name: string | null; app_slug: string | null; brand_color: string | null; assistant_enabled?: boolean;
 }
 
 const hhmm = (t: string | null, d: string) => (t ?? d).slice(0, 5);
@@ -25,6 +25,7 @@ export function CompanyEditor({ c, onSaved }: { c: EditableCompany; onSaved: () 
   const [appName, setAppName] = useState(c.app_name ?? "");
   const [slug, setSlug] = useState(c.app_slug ?? "");
   const [color, setColor] = useState(c.brand_color ?? "");
+  const [assistant, setAssistant] = useState(c.assistant_enabled !== false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -106,6 +107,14 @@ export function CompanyEditor({ c, onSaved }: { c: EditableCompany; onSaved: () 
             <Copy className="h-4 w-4" />{copied ? "Copiat" : "Copiază"}</Button>
         </div>
       )}
+      <label className="flex items-center gap-3 border-t border-slate-100 pt-3 text-sm font-medium">
+        <input type="checkbox" className="h-5 w-5 accent-orange-600" checked={assistant} onChange={async (e) => {
+          const v = e.target.checked; setAssistant(v); setErr(null);
+          const { error } = await supabase().rpc("owner_set_assistant", { p_enabled: v, p_company: c.id });
+          if (error) { setAssistant(!v); setErr(humanError(error)); } else await onSaved();
+        }} />
+        Asistent AI pornit pentru această firmă
+      </label>
       {err && <ErrorBox message={err} />}
       {ok && <Notice tone="green">Salvat. Utilizatorii firmei văd schimbările la următoarea deschidere a aplicației.</Notice>}
       <Button variant="primary" onClick={save} loading={busy}>Salvează firma și aplicația</Button>

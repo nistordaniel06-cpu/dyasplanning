@@ -33,7 +33,7 @@ interface OwnerCompany {
   projects: number; assignments_7d: number; time_entries_7d: number; last_sign_in: string | null;
   last_city: string | null; last_country: string | null;
   default_work_start: string | null; default_work_end: string | null; default_break_minutes: number | null;
-  app_name: string | null; app_slug: string | null; brand_color: string | null;
+  app_name: string | null; app_slug: string | null; brand_color: string | null; assistant_enabled?: boolean;
 }
 interface OwnerUser {
   user_id: string; login: string; name: string | null; role: AppRole; created_at: string; last_sign_in: string | null;
@@ -536,7 +536,7 @@ function AnnouncementsTab() {
 
 // ---------- Platformă ----------
 function PlatformTab() {
-  const q = useQuery(async () => must(await supabase().rpc("owner_settings")) as { signup_enabled: boolean; activity_push: boolean }, []);
+  const q = useQuery(async () => must(await supabase().rpc("owner_settings")) as { signup_enabled: boolean; activity_push: boolean; assistant_enabled?: boolean }, []);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -566,6 +566,19 @@ function PlatformTab() {
   return (
     <div className="space-y-4">
       <MaintenanceCard />
+      <Card title="Asistent AI">
+        <p className="mb-3 text-sm text-slate-600">Asistentul AI al administratorilor de firmă. Oprit aici = oprit pentru toate firmele. Îl poți opri și doar pentru o firmă, din detaliile ei (tab-ul Firme).</p>
+        <label className="flex items-center gap-3 text-sm font-medium">
+          <input type="checkbox" className="h-5 w-5 accent-orange-600" checked={q.data?.assistant_enabled !== false} disabled={busy || !q.data}
+            onChange={async (e) => {
+              setBusy(true); setErr(null);
+              const { error } = await supabase().rpc("owner_set_assistant", { p_enabled: e.target.checked, p_company: null });
+              setBusy(false);
+              if (error) setErr(humanError(error)); else { await q.reload(); window.dispatchEvent(new Event("dyas-status")); }
+            }} />
+          Asistentul AI este pornit pentru toate firmele
+        </label>
+      </Card>
       <Card title="Înscrierea firmelor noi">
         <p className="text-sm text-slate-700">
           Pagina ascunsă de creare cont este <strong>{on ? "deschisă" : "închisă"}</strong>.

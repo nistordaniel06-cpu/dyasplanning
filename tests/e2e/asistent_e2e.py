@@ -49,5 +49,22 @@ with sync_playwright() as p:
     expect(a.get_by_text(re.compile("Mâine lucrează: .*Ion Pop la Vila Otopeni"))).to_be_visible()
     ok("răspunde la întrebări din datele firmei")
 
+    # 4) adminul oprește asistentul din Setări
+    a.goto(B + "/setari"); a.get_by_label("Asistentul AI este pornit").uncheck()
+    expect(a.get_by_text("Asistentul AI a fost oprit.")).to_be_visible()
+    a.goto(B + "/asistent"); expect(a.get_by_text("Asistentul AI este oprit")).to_be_visible()
+    st = a.evaluate("""async () => { const parts = document.cookie.split('; ').filter((c) => /^sb-.*-auth-token/.test(c)).sort().map((c) => decodeURIComponent(c.split('=').slice(1).join('=')));
+      let raw = parts.join(''); if (raw.startsWith('base64-')) raw = atob(raw.slice(7).replace(/-/g, '+').replace(/_/g, '/'));
+      const t = JSON.parse(raw).access_token;
+      const r = await fetch('/api/asistent', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + t }, body: JSON.stringify({ messages: [{ role: 'user', content: 'salut' }] }) }); return r.status; }""")
+    assert st == 403, st
+    a.goto(B + "/dashboard"); expect(a.get_by_role("link", name="Asistent AI")).to_have_count(0)
+    ok("adminul poate opri asistentul: dispare din meniu, serverul refuză cererile")
+    d = b.new_context(viewport={"width": 1280, "height": 800}, locale="ro-RO"); dp = d.new_page()
+    dp.add_init_script("try{localStorage.setItem('dyas.loc','no:'+Date.now());localStorage.setItem('dyas.push','no:'+Date.now())}catch(e){}")
+    dp.goto(B + "/login"); dp.get_by_label("Număr de telefon").fill("patron@firma.ro"); dp.get_by_label("Parolă").fill("parola1234")
+    dp.get_by_role("button", name="Intră în aplicație").click(); dp.wait_for_url(re.compile("/dashboard"))
+    expect(dp.locator("aside").get_by_role("link", name="Ajutor")).to_be_visible(); dp.locator("aside").screenshot(path="shots/172_meniu_ajutor.png")
+    ok("pe calculator, „Ajutor” e în meniu, jos (nu mai acoperă numele aplicației)")
     b.close()
 print("PROBLEME:", probs if probs else "niciuna")

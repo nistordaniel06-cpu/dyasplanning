@@ -1,6 +1,6 @@
 "use client";
 // Ajutor, „Ce e nou” și modul mentenanță — părțile vizibile utilizatorilor.
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Construction, LifeBuoy, Sparkles } from "lucide-react";
@@ -45,20 +45,42 @@ export function WhatsNew() {
   );
 }
 
-interface Status { maintenance: boolean; message: string | null; until: string | null }
+interface Status { maintenance: boolean; message: string | null; until: string | null; assistant?: boolean }
+
+// o singură verificare pentru toată aplicația (mentenanță + asistent), la 60 s și la revenirea în aplicație
+let statusCache: Status | null = null;
+const statusSubs = new Set<(s: Status) => void>();
+let statusTimer: ReturnType<typeof setInterval> | null = null;
+function refreshStatus() {
+  void supabase().rpc("app_status").then(({ data }) => {
+    if (!data) return;
+    statusCache = data as Status;
+    statusSubs.forEach((f) => f(statusCache!));
+  });
+}
+function startStatus() {
+  if (statusTimer) return;
+  refreshStatus();
+  statusTimer = setInterval(refreshStatus, 60_000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshStatus(); });
+  window.addEventListener("dyas-status", refreshStatus);
+}
 
 export function useAppStatus(): Status | null {
-  const [st, setSt] = useState<Status | null>(null);
-  const check = useCallback(() => { void supabase().rpc("app_status").then(({ data }) => { if (data) setSt(data as Status); }); }, []);
+  const [st, setSt] = useState<Status | null>(statusCache);
   useEffect(() => {
-    check();
-    const t = setInterval(check, 60_000);
-    const vis = () => { if (document.visibilityState === "visible") check(); };
-    document.addEventListener("visibilitychange", vis);
-    window.addEventListener("dyas-status", check);
-    return () => { clearInterval(t); document.removeEventListener("visibilitychange", vis); window.removeEventListener("dyas-status", check); };
-  }, [check]);
+    startStatus();
+    statusSubs.add(setSt);
+    return () => { statusSubs.delete(setSt); };
+  }, []);
   return st;
+}
+
+/** Asistentul AI e pornit pentru firma asta (și global)? */
+export function useAssistantEnabled(): boolean {
+  const s = useSession();
+  const st = useAppStatus();
+  return s.membership?.role === "admin" && s.company?.assistant_enabled !== false && st?.assistant !== false;
 }
 
 export function MaintenanceScreen({ status }: { status: Status }) {

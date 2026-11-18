@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useSession } from "@/lib/session";
 import { getLang } from "@/lib/lang";
 import { Button, ErrorBox, cx } from "@/components/ui";
+import { useAssistantEnabled } from "@/components/AppExtras";
 
 interface Proposal { rezumat: string; actiuni: Record<string, unknown>[]; descrieri: string[] }
 interface Result { ok: boolean; text: string; link?: string }
@@ -41,6 +42,7 @@ async function call(path: string, body: unknown) {
 /** Asistentul AI al administratorului: spui ce vrei, el pregătește modificările, tu confirmi. */
 export default function AsistentPage() {
   const { membership } = useSession();
+  const enabled = useAssistantEnabled();
   const [items, setItems] = useState<Item[]>(() => {
     if (typeof window === "undefined") return [];
     try { return JSON.parse(sessionStorage.getItem(KEY) ?? "[]"); } catch { return []; }
@@ -55,6 +57,12 @@ export default function AsistentPage() {
   useEffect(() => { try { sessionStorage.setItem(KEY, JSON.stringify(items.slice(-40))); } catch { /* ignoră */ } end.current?.scrollIntoView({ behavior: "smooth" }); }, [items]);
 
   if (membership?.role !== "admin") return <ErrorBox message="Asistentul este disponibil doar pentru administratorii firmei." />;
+  if (!enabled) return (
+    <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-700">
+      <div className="mb-1 flex items-center gap-2 text-lg font-bold"><Sparkles className="h-5 w-5 text-slate-400" />Asistentul AI este oprit</div>
+      Îl poți porni din <Link href="/setari" className="font-semibold text-orange-700 underline">Setări → Asistent AI</Link>.
+    </div>
+  );
 
   // istoricul trimis modelului: textele, plus ce s-a confirmat/anulat
   const history = (list: Item[]) => list.map((it) => ({
