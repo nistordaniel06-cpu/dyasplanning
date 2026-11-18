@@ -16,7 +16,9 @@ export default function LoginPage() {
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isEmail = looksLikeEmail(login);
+  // „Email” = administratori și proprietari (tastatură cu litere); „Telefon” = angajați (tastatură cu cifre)
+  const [mode, setMode] = useState<"telefon" | "email">("telefon");
+  const isEmail = mode === "email" || looksLikeEmail(login);
   const [country, setCountry] = useState<Country>(COUNTRIES[0]);
   useEffect(() => {
     void setScreenSecure(true);
@@ -25,6 +27,7 @@ export default function LoginPage() {
     try { saved = localStorage.getItem("dyas.login.country"); } catch { /* ignoră */ }
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setCountry(COUNTRIES.find((c) => c.code === saved) ?? countryForTimezone(tz));
+    try { if (localStorage.getItem("dyas.login.mode") === "email") setMode("email"); } catch { /* ignoră */ }
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -61,17 +64,31 @@ export default function LoginPage() {
         </div>
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h1 className="text-lg font-semibold">Autentificare</h1>
-          <Field label="Număr de telefon" hint={isEmail ? "Autentificare cu email (administrator)." : "Alege țara și scrie numărul tău de WhatsApp."}>
-            <PhoneInput label="Număr de telefon" autoComplete="username" required showCountry={!isEmail} inputMode={isEmail ? "email" : "tel"}
-              country={country} local={login} onCountry={setCountry} onLocal={setLogin} />
-          </Field>
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-sm font-semibold" role="tablist">
+            {([["telefon", "Cu telefon"], ["email", "Cu email"]] as const).map(([m, l]) => (
+              <button key={m} type="button" role="tab" aria-selected={mode === m}
+                onClick={() => { setMode(m); setLogin(""); setSecret(""); setError(null); try { localStorage.setItem("dyas.login.mode", m); } catch { /* ignoră */ } }}
+                className={mode === m ? "rounded-lg bg-white py-2 text-slate-900 shadow-sm" : "rounded-lg py-2 text-slate-600"}>{l}</button>
+            ))}
+          </div>
+          {mode === "email" ? (
+            <Field label="Email" hint="Pentru administratori.">
+              <Input type="email" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required
+                value={login} onChange={(e) => setLogin(e.target.value)} placeholder="nume@firma.ro" />
+            </Field>
+          ) : (
+            <Field label="Număr de telefon" hint={isEmail ? "Autentificare cu email (administrator)." : "Alege țara și scrie numărul tău de WhatsApp."}>
+              <PhoneInput label="Număr de telefon" autoComplete="username" required showCountry={!isEmail} inputMode={isEmail ? "email" : "tel"}
+                country={country} local={login} onCountry={setCountry} onLocal={setLogin} />
+            </Field>
+          )}
           <Field label={isEmail ? "Parolă" : "Cod de acces"} hint={isEmail ? undefined : "Codul de 6 cifre primit de la administrator."}>
             <Input type="password" autoComplete="current-password" inputMode={isEmail ? "text" : "numeric"} required value={secret} onChange={(e) => setSecret(e.target.value)}
               className={isEmail ? "" : "tracking-[0.4em]"} />
           </Field>
           {error && <ErrorBox message={error} />}
           <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy}>Intră în aplicație</Button>
-          <p className="text-center text-xs text-slate-500">Nu ai cod? Cere-l administratorului firmei.</p>
+          {!isEmail && <p className="text-center text-xs text-slate-500">Nu ai cod? Cere-l administratorului firmei.</p>}
         </form>
       </div>
     </main>

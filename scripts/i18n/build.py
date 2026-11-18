@@ -189,7 +189,7 @@ exact.update({  # teren: pontaj cu buton, poze, chat vocal, fără semnal, PDF
  "Salvat. Utilizatorii firmei văd schimbările la următoarea deschidere a aplicației.": "Saved. The company's users will see the changes the next time they open the app.",
  "Linkul aplicației nu există": "This app link doesn't exist", "Verifică linkul primit sau cere unul nou administratorului.": "Check the link you received or ask the administrator for a new one.",
  "Mergi la autentificare": "Go to sign-in", "📷 Poză": "📷 Photo",
- "Firmă nouă": "New company", "Numele administratorului": "Administrator name", "Email administrator": "Administrator email",
+ "Cu telefon": "With phone", "Cu email": "With email", "Pentru administratori.": "For administrators.", "Firmă nouă": "New company", "Numele administratorului": "Administrator name", "Email administrator": "Administrator email",
  "Cu acest email intră în aplicație.": "They sign in to the app with this email.", "Minim 8 caractere. O poate schimba după prima intrare.": "At least 8 characters. They can change it after the first sign-in.",
  "Creează firma": "Create company", "Firma a fost creată. Administratorul poate intra imediat cu emailul și parola de mai jos.": "The company was created. The administrator can sign in right away with the email and password below.",
  "Copiază datele": "Copy details", "Ascunde parola": "Hide password", "Arată parola": "Show password", "Parolă nouă": "New password",
