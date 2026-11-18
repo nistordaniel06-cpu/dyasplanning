@@ -9,6 +9,7 @@ import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
 import { AnnouncementBar } from "./Announcement";
 import { Toasts } from "./Toasts";
+import { PresenceAndLocation } from "./LocationConsent";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { isNativeApp, setScreenSecure, startNativePush } from "@/lib/native";
 import { supabase } from "@/lib/supabase/client";
@@ -83,18 +84,6 @@ function FrameInner({ children }: { children: ReactNode }) {
   // Aplicația Android: capturile de ecran sunt permise doar administratorului
   useEffect(() => { void setScreenSecure(s.role !== "admin"); }, [s.role]);
   const router = useRouter();
-  // conectarea (oraș/dispozitiv) pentru panoul proprietarului; serverul limitează la o înregistrare / 30 min
-  useEffect(() => {
-    void (async () => {
-      try {
-        const { data } = await supabase().auth.getSession();
-        const token = data.session?.access_token;
-        if (!token) return;
-        const installed = window.matchMedia?.("(display-mode: standalone)").matches || isNativeApp();
-        await fetch("/api/presence", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ installed }) });
-      } catch { /* nu blochează aplicația */ }
-    })();
-  }, []);
   useEffect(() => {
     void startNativePush(
       async (token) => { await supabase().rpc("save_push_subscription", { p_endpoint: `fcm:${token}`, p_p256dh: "fcm", p_auth: "fcm", p_user_agent: "DYASPlanning Android" }); },
@@ -168,6 +157,7 @@ function FrameInner({ children }: { children: ReactNode }) {
 
       <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-10"><AnnouncementBar />{children}</main>
       <Toasts />
+      <PresenceAndLocation />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="grid" style={{ gridTemplateColumns: `repeat(${mobileMain.length + (mobileMore.length || s.ownerOnly ? 1 : 0)}, minmax(0, 1fr))` }}>

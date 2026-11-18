@@ -25,7 +25,7 @@ function translate(D, text) {
     for (const [re, rep] of D.patterns) {
       const g = re.exec(text);
       if (!g) continue;
-      out = rep.replace(/\$(\d)/g, (_, i) => { const v = g[Number(i)] || ""; return D.exact.get(v) || v; });
+      out = rep.replace(/\$(\d)/g, (_, i) => { const v = g[Number(i)] || ""; return D.exact.get(v) || (v.indexOf(", ") >= 0 ? v.split(", ").map((x) => D.exact.get(x) || x).join(", ") : v); });
       break;
     }
   }

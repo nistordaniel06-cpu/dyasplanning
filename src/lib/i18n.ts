@@ -21,7 +21,7 @@ export function translateText(text: string): string | null {
     for (const [re, rep] of patterns) {
       const g = re.exec(core);
       if (!g) continue;
-      out = rep.replace(/\$(\d)/g, (_, i) => { const v = g[Number(i)] ?? ""; return exact.get(v) ?? v; });
+      out = rep.replace(/\$(\d)/g, (_, i) => { const v = g[Number(i)] ?? ""; return exact.get(v) ?? (v.includes(", ") ? v.split(", ").map((x) => exact.get(x) ?? x).join(", ") : v); });
       break;
     }
   }

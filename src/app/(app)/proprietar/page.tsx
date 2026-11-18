@@ -2,13 +2,17 @@
 import { localeTag } from "@/lib/lang";
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronUp, Copy, MapPin, Megaphone, Search } from "lucide-react";
-import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Notice, PageHeader, Select, Stat, Tabs, Textarea, cx } from "@/components/ui";
+import { ChevronDown, ChevronUp, Copy, Crosshair, Globe, MapPin, Megaphone, Search } from "lucide-react";
+import dynamic from "next/dynamic";
+import type { MapPoint } from "@/components/owner/OwnerMap";
+import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, Stat, Tabs, Textarea, cx } from "@/components/ui";
+const OwnerMap = dynamic(() => import("@/components/owner/OwnerMap").then((m) => m.OwnerMap), { ssr: false, loading: () => <Loading /> });
 import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { ROLE_LABEL } from "@/lib/labels";
+import { tr } from "@/lib/i18n";
 import { HIDDEN_SIGNUP_PATH, displayLogin } from "@/lib/phone";
 import type { AppRole } from "@/lib/types";
 
@@ -30,9 +34,10 @@ interface OwnerUser {
   last_city: string | null; last_country: string | null; last_device: string | null; installed: boolean; logins_30d: number;
 }
 interface LoginEvent {
-  at: string; user_login: string | null; user_name: string | null; company_name: string | null; ip: string | null;
+  at: string; user_id: string; user_login: string | null; user_name: string | null; company_name: string | null; ip: string | null;
   city: string | null; region: string | null; country: string | null; lat: number | null; lon: number | null;
   device: string | null; installed: boolean;
+  gps_lat: number | null; gps_lon: number | null; gps_accuracy: number | null; address: string | null;
 }
 type Plan = "gratuit" | "proba" | "standard" | "premium";
 const PLAN_LABEL: Record<Plan, string> = { gratuit: "Gratuit", proba: "Perioadă de probă", standard: "Standard", premium: "Premium" };
@@ -83,14 +88,15 @@ export default function ProprietarPage() {
   return <Suspense fallback={<Loading />}><Proprietar /></Suspense>;
 }
 
-type Tab = "prezentare" | "firme" | "activitate" | "conectari" | "anunturi" | "platforma";
-const TABS: Tab[] = ["prezentare", "firme", "activitate", "conectari", "anunturi", "platforma"];
+type Tab = "prezentare" | "firme" | "activitate" | "conectari" | "harta" | "anunturi" | "platforma";
+const TABS: Tab[] = ["prezentare", "firme", "activitate", "conectari", "harta", "anunturi", "platforma"];
 
 function Proprietar() {
   const sp = useSearchParams();
   const initial = sp.get("tab") as Tab | null;
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "prezentare");
   const [companyFilter, setCompanyFilter] = useState<string>("");
+  const [userId, setUserId] = useState<string | null>(null);
   return (
     <div>
       <PageHeader title="Panoul proprietarului" subtitle="Toate firmele înregistrate în DYASPlanning. Vizibil doar pentru tine." />
@@ -100,14 +106,17 @@ function Proprietar() {
           { value: "firme", label: "Firme" },
           { value: "activitate", label: "Activitate" },
           { value: "conectari", label: "Conectări" },
+          { value: "harta", label: "Hartă" },
           { value: "anunturi", label: "Anunțuri" },
           { value: "platforma", label: "Platformă" },
         ]} />
       </div>
       {tab === "prezentare" && <OverviewTab onOpen={(t) => setTab(t)} />}
-      {tab === "firme" && <CompaniesTab onLogins={(id) => { setCompanyFilter(id); setTab("conectari"); }} />}
-      {tab === "activitate" && <ActivityTab company={companyFilter} setCompany={setCompanyFilter} />}
-      {tab === "conectari" && <LoginsTab company={companyFilter} setCompany={setCompanyFilter} />}
+      {tab === "firme" && <CompaniesTab onLogins={(id) => { setCompanyFilter(id); setTab("conectari"); }} onUser={setUserId} />}
+      {tab === "activitate" && <ActivityTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
+      {tab === "conectari" && <LoginsTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
+      {tab === "harta" && <MapTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
+      <UserDetailModal userId={userId} onClose={() => setUserId(null)} />
       {tab === "anunturi" && <AnnouncementsTab />}
       {tab === "platforma" && <PlatformTab />}
     </div>
@@ -162,7 +171,7 @@ function OverviewTab({ onOpen }: { onOpen: (t: Tab) => void }) {
 }
 
 // ---------- Firme ----------
-function CompaniesTab({ onLogins }: { onLogins: (id: string) => void }) {
+function CompaniesTab({ onLogins, onUser }: { onLogins: (id: string) => void; onUser: (id: string) => void }) {
   const q = useQuery(async () => must(await supabase().rpc("owner_companies")) as OwnerCompany[], []);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"" | "activ" | "suspendat">("");
@@ -208,7 +217,7 @@ function CompaniesTab({ onLogins }: { onLogins: (id: string) => void }) {
               </div>
               {isOpen ? <ChevronUp className="h-5 w-5 shrink-0 text-slate-400" /> : <ChevronDown className="h-5 w-5 shrink-0 text-slate-400" />}
             </button>
-            {isOpen && <CompanyDetails c={c} onSaved={q.reload} onLogins={() => onLogins(c.id)} onDeleted={async () => { setOpen(null); await q.reload(); }} />}
+            {isOpen && <CompanyDetails c={c} onSaved={q.reload} onLogins={() => onLogins(c.id)} onUser={onUser} onDeleted={async () => { setOpen(null); await q.reload(); }} />}
           </div>
         );
       })}
@@ -216,7 +225,7 @@ function CompaniesTab({ onLogins }: { onLogins: (id: string) => void }) {
   );
 }
 
-function CompanyDetails({ c, onSaved, onLogins, onDeleted }: { c: OwnerCompany; onSaved: () => Promise<void>; onLogins: () => void; onDeleted: () => Promise<void> }) {
+function CompanyDetails({ c, onSaved, onLogins, onDeleted, onUser }: { c: OwnerCompany; onSaved: () => Promise<void>; onLogins: () => void; onDeleted: () => Promise<void>; onUser: (id: string) => void }) {
   const [delOpen, setDelOpen] = useState(false);
   const [delName, setDelName] = useState("");
   const [delBusy, setDelBusy] = useState(false);
@@ -296,7 +305,8 @@ function CompanyDetails({ c, onSaved, onLogins, onDeleted }: { c: OwnerCompany; 
         {users.loading && !users.data ? <Loading /> : users.error ? <ErrorBox message={users.error} onRetry={users.reload} /> : (
           <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
             {(users.data ?? []).map((u) => (
-              <li key={u.user_id} className="flex flex-col gap-0.5 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <li key={u.user_id} role="button" tabIndex={0} onClick={() => onUser(u.user_id)} onKeyDown={(e) => e.key === "Enter" && onUser(u.user_id)}
+                className="flex cursor-pointer flex-col gap-0.5 p-3 hover:bg-orange-50/50 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="font-medium">{u.name ?? displayLogin(u.login)} <span className="text-xs font-normal text-slate-500">· {ROLE_LABEL[u.role]}</span></div>
                   <div className="truncate text-xs text-slate-500">{displayLogin(u.login)}{u.installed ? " · aplicație instalată" : ""}</div>
@@ -315,7 +325,7 @@ function CompanyDetails({ c, onSaved, onLogins, onDeleted }: { c: OwnerCompany; 
 }
 
 // ---------- Conectări ----------
-function LoginsTab({ company, setCompany }: { company: string; setCompany: (v: string) => void }) {
+function LoginsTab({ company, setCompany, onUser }: { company: string; setCompany: (v: string) => void; onUser: (id: string) => void }) {
   const companies = useQuery(async () => must(await supabase().rpc("owner_companies")) as OwnerCompany[], []);
   const q = useQuery(async () => must(await supabase().rpc("owner_login_events", { p_company: company || null, p_limit: 300 })) as LoginEvent[], [company]);
   const cities = useMemo(() => {
@@ -335,7 +345,10 @@ function LoginsTab({ company, setCompany }: { company: string; setCompany: (v: s
         <option value="">Toate firmele</option>
         {(companies.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </Select>
-      <p className="text-xs text-slate-500">Locația e aproximativă (după rețeaua de internet, la nivel de oraș), nu GPS. Istoricul se păstrează 90 de zile.</p>
+      <p className="text-xs text-slate-500">
+        <Crosshair className="inline h-3.5 w-3.5 text-orange-600" /> GPS = locația exactă a telefonului (când omul a permis locația).{" "}
+        <Globe className="inline h-3.5 w-3.5" /> IP = aproximativ, după rețeaua de internet; pe iPhone cu „iCloud Private Relay” sau cu VPN orașul poate fi greșit. Istoricul se păstrează 90 de zile.
+      </p>
       {q.loading && !q.data ? <Loading /> : q.error ? <ErrorBox message={q.error} onRetry={q.reload} /> : (q.data ?? []).length === 0 ? (
         <Empty title="Nicio conectare înregistrată încă">Conectările apar de acum înainte, la fiecare deschidere a aplicației.</Empty>
       ) : (
@@ -349,23 +362,7 @@ function LoginsTab({ company, setCompany }: { company: string; setCompany: (v: s
           </Card>
           <Card title={`Ultimele conectări (${q.data!.length})`} className="lg:col-span-2">
             <ul className="divide-y divide-slate-100 text-sm">
-              {q.data!.map((e, i) => (
-                <li key={i} className="flex flex-col gap-0.5 py-2.5 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="font-medium">{e.user_name ?? displayLogin(e.user_login)} <span className="text-xs font-normal text-slate-500">· {e.company_name ?? "fără firmă"}</span></div>
-                    <div className="text-xs text-slate-500">{e.device ?? "—"}{e.installed ? " · aplicație instalată" : ""}{e.ip ? ` · IP ${e.ip}` : ""}</div>
-                  </div>
-                  <div className="text-xs text-slate-600 sm:text-right">
-                    <div>{dt(e.at)}</div>
-                    <div>
-                      {place(e.city, e.country)}
-                      {e.lat != null && e.lon != null && (
-                        <a className="ml-1 font-semibold text-orange-700" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${e.lat},${e.lon}`}>hartă</a>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
+              {q.data!.map((e, i) => <LoginRow key={i} e={e} onUser={onUser} />)}
             </ul>
           </Card>
         </div>
@@ -375,8 +372,11 @@ function LoginsTab({ company, setCompany }: { company: string; setCompany: (v: s
 }
 
 // ---------- Activitate ----------
-interface Activity { at: string; company_id: string; company_name: string | null; actor: string | null; entity: string; op: string; n: number; summary: string }
-function ActivityTab({ company, setCompany }: { company: string; setCompany: (v: string) => void }) {
+interface Activity {
+  at: string; company_id: string; company_name: string | null; user_id: string | null; actor: string | null; entity: string; op: string; n: number; summary: string;
+  details: { label: string; changes?: { f: string; from: string; to: string }[] }[] | null;
+}
+function ActivityTab({ company, setCompany, onUser }: { company: string; setCompany: (v: string) => void; onUser: (id: string) => void }) {
   const companies = useQuery(async () => must(await supabase().rpc("owner_companies")) as OwnerCompany[], []);
   const q = useQuery(async () => must(await supabase().rpc("owner_activity_feed", { p_company: company || null, p_limit: 300 })) as Activity[], [company]);
   const tone = (op: string) => (op === "DELETE" ? "red" : op === "INSERT" ? "green" : "blue") as "red" | "green" | "blue";
@@ -392,18 +392,7 @@ function ActivityTab({ company, setCompany }: { company: string; setCompany: (v:
       ) : (
         <Card>
           <ul className="divide-y divide-slate-100 text-sm">
-            {q.data!.map((a, i) => (
-              <li key={i} className="flex items-start justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="font-medium">{a.summary}</div>
-                  <div className="text-xs text-slate-500">{a.company_name ?? "—"}</div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <Badge tone={tone(a.op)}>{a.op === "INSERT" ? "adăugare" : a.op === "UPDATE" ? "modificare" : "ștergere"}</Badge>
-                  <div className="mt-1 text-xs text-slate-500">{ago(a.at)}</div>
-                </div>
-              </li>
-            ))}
+            {q.data!.map((a, i) => <ActivityRow key={i} a={a} tone={tone(a.op)} onUser={onUser} />)}
           </ul>
         </Card>
       )}
@@ -562,5 +551,176 @@ function PlatformTab() {
         <p className="mt-3 text-xs text-slate-500">Administratorii firmelor nu pot vedea acest panou și nu își pot schimba singuri planul sau statusul.</p>
       </Card>
     </div>
+  );
+}
+
+// ---------- Conectare (rând) ----------
+function LoginRow({ e, onUser }: { e: LoginEvent; onUser: (id: string) => void }) {
+  const gps = e.gps_lat != null && e.gps_lon != null;
+  const mapUrl = gps ? `https://www.google.com/maps?q=${e.gps_lat},${e.gps_lon}` : e.lat != null && e.lon != null ? `https://www.google.com/maps?q=${e.lat},${e.lon}` : null;
+  return (
+    <li className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <button className="text-left font-medium text-slate-900 hover:text-orange-700" onClick={() => onUser(e.user_id)}>
+          <span data-no-i18n>{e.user_name ?? displayLogin(e.user_login)}</span>
+        </button>{" "}
+        <span className="text-xs text-slate-500">· {e.company_name ?? "fără firmă"}</span>
+        <div className="text-xs text-slate-500">{e.device ?? "—"}{e.installed ? " · aplicație instalată" : ""}{e.ip ? ` · IP ${e.ip}` : ""}</div>
+      </div>
+      <div className="text-xs text-slate-600 sm:max-w-[55%] sm:text-right">
+        <div>{dt(e.at)}</div>
+        {gps ? (
+          <div className="text-slate-800">
+            <Crosshair className="mr-1 inline h-3.5 w-3.5 text-orange-600" />
+            <span data-no-i18n>{e.address ?? `${e.gps_lat!.toFixed(5)}, ${e.gps_lon!.toFixed(5)}`}</span>
+            {e.gps_accuracy != null && <span className="text-slate-500"> (±{e.gps_accuracy} m)</span>}
+          </div>
+        ) : (
+          <div><Globe className="mr-1 inline h-3.5 w-3.5" />{place(e.city, e.country)} <span className="text-slate-400">· aproximativ (IP)</span></div>
+        )}
+        {mapUrl && <a className="font-semibold text-orange-700" target="_blank" rel="noreferrer" href={mapUrl}>hartă</a>}
+      </div>
+    </li>
+  );
+}
+
+// ---------- Activitate (rând, cu detalii) ----------
+const OP_LABEL: Record<string, string> = { INSERT: "adăugare", UPDATE: "modificare", DELETE: "ștergere" };
+function ActivityRow({ a, tone, onUser }: { a: Activity; tone: "red" | "green" | "blue"; onUser: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const items = a.details ?? [];
+  const hasMore = items.length > 0 && (items.length > 1 || (items[0].changes?.length ?? 0) > 0);
+  return (
+    <li className="py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-medium">{a.summary}</div>
+          <div className="text-xs text-slate-500">
+            {a.user_id ? <button className="font-semibold text-orange-700" onClick={() => onUser(a.user_id!)}><span data-no-i18n>{a.actor}</span></button> : <span data-no-i18n>{a.actor}</span>}
+            {" · "}{a.company_name ?? "—"}
+          </div>
+          {hasMore && (
+            <button className="mt-1 text-xs font-semibold text-slate-600 underline" onClick={() => setOpen(!open)}>{open ? "Ascunde detaliile" : "Vezi ce s-a schimbat"}</button>
+          )}
+        </div>
+        <div className="shrink-0 text-right">
+          <Badge tone={tone}>{OP_LABEL[a.op] ?? a.op}</Badge>
+          <div className="mt-1 text-xs text-slate-500">{ago(a.at)}</div>
+          <div className="text-[11px] text-slate-400">{dt(a.at)}</div>
+        </div>
+      </div>
+      {open && (
+        <div className="mt-2 space-y-2 rounded-lg bg-slate-50 p-2.5 text-xs">
+          {items.map((it, j) => (
+            <div key={j}>
+              <div className="font-semibold text-slate-800" data-no-i18n>{it.label}</div>
+              {(it.changes ?? []).map((c, k) => (
+                <div key={k} className="mt-0.5 flex flex-wrap gap-x-1 text-slate-600">
+                  <span className="font-medium">{c.f}:</span>
+                  <span className="line-through decoration-slate-400">{c.from}</span>
+                  <span>→</span>
+                  <span className="font-medium text-slate-900">{c.to}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+          {a.n > items.length && <div className="text-slate-500">… și încă {a.n - items.length}</div>}
+        </div>
+      )}
+    </li>
+  );
+}
+
+// ---------- Hartă ----------
+function MapTab({ company, setCompany, onUser }: { company: string; setCompany: (v: string) => void; onUser: (id: string) => void }) {
+  const companies = useQuery(async () => must(await supabase().rpc("owner_companies")) as OwnerCompany[], []);
+  const q = useQuery(async () => must(await supabase().rpc("owner_map_points", { p_company: company || null })) as MapPoint[], [company]);
+  const labels = useMemo(() => ({ precise: tr("GPS exact"), approx: tr("aproximativ (IP)"), details: tr("Vezi fișa") }), []);
+  const precise = (q.data ?? []).filter((p) => p.precise).length;
+  return (
+    <div className="space-y-3">
+      <Select value={company} onChange={(e) => setCompany(e.target.value)} className="sm:w-80">
+        <option value="">Toate firmele</option>
+        {(companies.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </Select>
+      <p className="text-xs text-slate-500">
+        Ultima poziție a fiecărui utilizator (ultimele 30 de zile).{" "}
+        <span className="font-semibold text-orange-700">● GPS exact</span>{" "}
+        <span className="font-semibold text-slate-500">● aproximativ (IP)</span>
+        {q.data && <> · {precise} / {q.data.length} cu GPS</>}
+      </p>
+      {q.loading && !q.data ? <Loading /> : q.error ? <ErrorBox message={q.error} onRetry={q.reload} /> : (
+        <OwnerMap points={q.data ?? []} onUser={onUser} labels={labels} />
+      )}
+    </div>
+  );
+}
+
+// ---------- Fișa utilizatorului ----------
+interface UserDetail {
+  user_id: string; login: string | null; created_at: string; last_sign_in: string | null; name: string | null; role: AppRole | null;
+  company_id: string | null; company: string | null; phone: string | null; trade: string | null; is_driver: boolean | null;
+  logins_30d: number; push_devices: number; assignments_7d: number; time_entries_30d: number; hours_30d: number; messages_30d: number;
+  devices: { device: string | null; ip: string | null; city: string | null; country: string | null; installed: boolean; count: number; first: string; last: string }[];
+}
+function UserDetailModal({ userId, onClose }: { userId: string | null; onClose: () => void }) {
+  const d = useQuery(async () => (userId ? must(await supabase().rpc("owner_user_detail", { p_user: userId })) as UserDetail : null), [userId]);
+  const logins = useQuery(async () => (userId ? must(await supabase().rpc("owner_login_events", { p_user: userId, p_limit: 50 })) as LoginEvent[] : []), [userId]);
+  const acts = useQuery(async () => (userId ? must(await supabase().rpc("owner_activity_feed", { p_user: userId, p_limit: 50 })) as Activity[] : []), [userId]);
+  const u = d.data;
+  return (
+    <Modal open={!!userId} onClose={onClose} title={u?.name ?? (u ? displayLogin(u.login) : "…")} wide>
+      {d.loading && !u ? <Loading /> : d.error ? <ErrorBox message={d.error} /> : u && (
+        <div className="space-y-4 text-sm">
+          <div className="grid gap-1 text-slate-700 sm:grid-cols-2">
+            <div><span className="text-slate-500">Firmă:</span> <span data-no-i18n>{u.company ?? "—"}</span></div>
+            <div><span className="text-slate-500">Rol:</span> {u.role ? ROLE_LABEL[u.role] : "—"}{u.is_driver ? " · Șofer" : ""}</div>
+            <div><span className="text-slate-500">Cont:</span> <span data-no-i18n>{displayLogin(u.login)}</span></div>
+            {u.phone && <div><span className="text-slate-500">Telefon:</span> <a className="text-orange-700" href={`tel:${u.phone.replace(/\s/g, "")}`}>{u.phone}</a></div>}
+            {u.trade && <div><span className="text-slate-500">Meserie:</span> <span data-no-i18n>{u.trade}</span></div>}
+            <div><span className="text-slate-500">Cont creat:</span> {new Date(u.created_at).toLocaleDateString(localeTag())}</div>
+            <div><span className="text-slate-500">Ultima autentificare:</span> {u.last_sign_in ? dt(u.last_sign_in) : "niciodată"}</div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Stat label="Conectări / 30 zile" value={u.logins_30d} />
+            <Stat label="Ore aprobate / 30 zile" value={u.hours_30d} />
+            <Stat label="Mesaje / 30 zile" value={u.messages_30d} />
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Dispozitive ({u.devices.length}) · {u.push_devices} cu notificări</h3>
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+              {u.devices.map((v, i) => (
+                <li key={i} className="flex flex-col gap-0.5 p-2.5 sm:flex-row sm:justify-between">
+                  <div>
+                    <div className="font-medium">{v.device ?? "—"}{v.installed ? " · aplicație instalată" : ""}</div>
+                    <div className="text-xs text-slate-500">IP {v.ip ?? "—"} · {place(v.city, v.country)}</div>
+                  </div>
+                  <div className="text-xs text-slate-600 sm:text-right">
+                    <div>{v.count} conectări</div>
+                    <div>{dt(v.first)} → {dt(v.last)}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold">Ultimele conectări</h3>
+            {logins.loading && !logins.data ? <Loading /> : (
+              <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 px-2.5">
+                {(logins.data ?? []).map((e, i) => <LoginRow key={i} e={e} onUser={() => undefined} />)}
+              </ul>
+            )}
+          </div>
+          {(acts.data ?? []).length > 0 && (
+            <div>
+              <h3 className="mb-1 font-semibold">Acțiuni ca administrator</h3>
+              <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 px-2.5">
+                {acts.data!.map((a, i) => <ActivityRow key={i} a={a} tone={(a.op === "DELETE" ? "red" : a.op === "INSERT" ? "green" : "blue")} onUser={() => undefined} />)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
   );
 }

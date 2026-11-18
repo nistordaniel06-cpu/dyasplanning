@@ -41,3 +41,11 @@ describe("traducere în engleză", () => {
     for (const s of samples) expect(t(D, s)).toBe(translateText(s) ?? s);
   });
 });
+
+describe("activitate detaliată în engleză", () => {
+  it("rezumat cu element și câmpuri", () => {
+    expect(translateText("Sporea Iulia a modificat angajatul „Ion Pop” (telefon, meserie)"))
+      .toBe("Sporea Iulia updated the employee “Ion Pop” (phone, trade)");
+    expect(translateText("Dan a adăugat lucrarea „Vilă Snagov”")).toBe("Dan added the job “Vilă Snagov”");
+  });
+});

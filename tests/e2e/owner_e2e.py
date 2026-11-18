@@ -5,8 +5,10 @@ def ok(m): print("✓", m, flush=True)
 def sql(q): return subprocess.run(["psql","-h","/tmp","-p","5433","-U","postgres","-d","dyas_e2e","-tAc",q],capture_output=True,text=True,check=True).stdout.strip()
 with sync_playwright() as p:
     b=p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
-    def ctx(w=390,h=844,mobile=True):
-        c=b.new_context(viewport={"width":w,"height":h}, is_mobile=mobile, has_touch=mobile, locale="ro-RO", timezone_id="Europe/Bucharest")
+    def ctx(w=390,h=844,mobile=True,geo=None,ask=False):
+        extra={"geolocation":geo,"permissions":["geolocation"]} if geo else {}
+        c=b.new_context(viewport={"width":w,"height":h}, is_mobile=mobile, has_touch=mobile, locale="ro-RO", timezone_id="Europe/Bucharest", **extra)
+        if not ask and not geo: c.add_init_script("try{localStorage.getItem('dyas.loc')||localStorage.setItem('dyas.loc','no:'+Date.now())}catch(e){}")
         pg=c.new_page(); pg.set_default_timeout(15000)
         pg.on("pageerror", lambda e: probs.append(f"pageerror {e}"))
         pg.on("console", lambda m: m.type=="error" and not re.search(r"WebSocket|realtime|Failed to load resource", m.text) and probs.append(m.text))
@@ -19,7 +21,7 @@ with sync_playwright() as p:
         pg.get_by_label("Numele firmei").fill(firm); pg.get_by_label("Numele tău").fill(name); pg.get_by_role("button", name="Creează firma").click()
         pg.wait_for_url(re.compile("/dashboard"))
     o=ctx(1280,900,False); signup(o,"dani@dyas.ro","Test srl","Dani")
-    c=ctx(); signup(c,"client@firma.ro","Client Construct SRL","Cristi")
+    c=ctx(geo={"latitude":44.4805,"longitude":26.1298,"accuracy":12}); signup(c,"client@firma.ro","Client Construct SRL","Cristi")
     sql("insert into platform_owners(user_id) select id from auth.users where email='dani@dyas.ro'")
     ok("2 firme create; Dani setat proprietar")
     # clientul nu are acces
@@ -55,8 +57,24 @@ with sync_playwright() as p:
     o.screenshot(path="shots/73_proprietar_conectari.png", full_page=True); ok(f"conectări înregistrate și afișate ({n})")
     # activitatea adminului unei firme
     c.goto(B+"/lucrari?nou=1"); d=c.get_by_role("dialog"); d.get_by_label("Nume lucrare").fill("Vilă Snagov"); d.get_by_role("button", name="Adaugă lucrare").click(); c.wait_for_url(re.compile("/lucrari/"))
-    o.goto(B+"/proprietar?tab=activitate"); expect(o.get_by_text("Cristi a adăugat 1 lucrări")).to_be_visible()
-    o.screenshot(path="shots/76_proprietar_activitate.png", full_page=True); ok("activitatea adminului apare în panou")
+    c.get_by_role("button", name="Modifică").first.click(); d=c.get_by_role("dialog"); d.get_by_label("Localitate").fill("Snagov"); d.get_by_label("Client").fill("Familia Ionescu"); d.get_by_role("button", name="Salvează").click(); expect(d).to_be_hidden()
+    o.goto(B+"/proprietar?tab=activitate"); expect(o.get_by_text("Cristi a adăugat lucrarea „Vilă Snagov”")).to_be_visible()
+    expect(o.get_by_text(re.compile(r"Cristi a modificat lucrarea „Vilă Snagov” \((client, localitate|localitate, client)\)"))).to_be_visible()
+    o.get_by_role("button", name="Vezi ce s-a schimbat").first.click(); expect(o.get_by_text("Familia Ionescu")).to_be_visible()
+    o.screenshot(path="shots/76_proprietar_activitate.png", full_page=True); ok("activitatea arată elementul și câmpurile schimbate (înainte → după)")
+    # conectări cu GPS + fișa utilizatorului + hartă
+    o.get_by_role("tab", name="Conectări").click(); expect(o.get_by_text(re.compile(r"44\.480(5|50), 26\.129(8|80)")).first).to_be_visible(); expect(o.get_by_text("(±12 m)").first).to_be_visible()
+    o.screenshot(path="shots/83_conectari_gps.png", full_page=True); ok("conectarea are locația GPS exactă (±12 m)")
+    o.locator("main").get_by_role("button", name="Cristi").first.click(); md=o.get_by_role("dialog")
+    expect(md.get_by_text("Client Construct SRL").first).to_be_visible(); expect(md.get_by_text(re.compile(r"Dispozitive \(\d+\)"))).to_be_visible(); expect(md.get_by_text("Acțiuni ca administrator")).to_be_visible()
+    o.screenshot(path="shots/84_fisa_utilizator.png", full_page=True); md.get_by_role("button", name="Închide").first.click(); ok("fișa utilizatorului: dispozitive, conectări, acțiuni")
+    o.get_by_role("tab", name="Hartă").click(); expect(o.locator(".leaflet-container")).to_be_visible(); expect(o.locator("path.leaflet-interactive").first).to_be_attached()
+    o.screenshot(path="shots/85_harta.png", full_page=True); ok("harta cu pozițiile")
+    # fereastra de permisiune pentru locație (prima deschidere, fără permisiune)
+    q=ctx(ask=True); q.goto(B+"/login"); q.get_by_label("Număr de telefon").fill("client@firma.ro"); q.get_by_label("Parolă").fill("parola1234"); q.get_by_role("button", name="Intră în aplicație").click(); q.wait_for_url(re.compile("/dashboard"))
+    expect(q.get_by_text("Locația la deschiderea aplicației")).to_be_visible(); q.screenshot(path="shots/86_cerere_locatie.png")
+    q.get_by_role("button", name="Nu acum").click(); expect(q.get_by_text("Locația la deschiderea aplicației")).to_have_count(0)
+    q.reload(); q.wait_for_timeout(1500); expect(q.get_by_text("Locația la deschiderea aplicației")).to_have_count(0); ok("cererea de locație: explicație, „Nu acum” nu mai deranjează")
     # anunț pentru toate firmele + notificare pe ecran
     c.goto(B+"/dashboard"); expect(c.get_by_role("heading", name="Lucrări active")).to_be_visible(); c.wait_for_timeout(800)
     o.get_by_role("tab", name="Anunțuri").click()

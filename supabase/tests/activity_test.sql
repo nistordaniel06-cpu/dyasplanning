@@ -13,7 +13,7 @@ insert into projects(company_id, name) values (tst.id('c1'), 'Hală Chitila');
 update projects set address = 'Snagov' where name = 'Vilă Snagov';
 reset role;
 select tst.assert((select count(*) from owner_activity where entity = 'projects') = 3, 'acțiunile adminului sunt în jurnal');
-select tst.assert((select summary from owner_activity where entity = 'projects' and op = 'INSERT' order by id limit 1) = 'Dan Admin a adăugat 1 lucrări', 'descrierea acțiunii');
+select tst.assert((select summary from owner_activity where entity = 'projects' and op = 'INSERT' order by id limit 1) = 'Dan Admin a adăugat lucrarea „Vilă Snagov”', 'descrierea acțiunii');
 select tst.assert((select count(*) from owner_activity where entity = 'projects' and op = 'INSERT' and pushed) = 1, 'push limitat la unul la 2 minute');
 select tst.assert((select count(*) from owner_activity where entity = 'projects' and op = 'UPDATE' and pushed) = 1, 'altă operație = push separat');
 -- angajații nu apar în jurnal
