@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase/client";
 import { humanError } from "./errors";
+import { isNetworkError } from "./offline";
 import { nativePushToken } from "./native";
 import type { AppRole, Company, Employee, Membership } from "./types";
 
@@ -30,6 +31,8 @@ export function useSession(): SessionValue {
   return v;
 }
 
+const SESSION_CACHE = "dyas.session.cache";
+
 type State =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -42,8 +45,20 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
 
   const load = useCallback(async () => {
     const sb = supabase();
+    // fără semnal: folosim sesiunea de pe telefon și ultimele date salvate
+    const offlineFallback = async (): Promise<boolean> => {
+      const { data } = await sb.auth.getSession();
+      const uid = data.session?.user.id;
+      if (!uid) return false;
+      try {
+        const c = JSON.parse(localStorage.getItem(SESSION_CACHE) ?? "null") as (Omit<Extract<State, { status: "ready" }>, "status">) | null;
+        if (c && c.user.id === uid) { setState({ status: "ready", ...c }); return true; }
+      } catch { /* ignoră */ }
+      return false;
+    };
     try {
       const { data: u, error: ue } = await sb.auth.getUser();
+      if (ue && isNetworkError(ue) && await offlineFallback()) return;
       if (ue || !u.user) { setState({ status: "anon" }); return; }
       const [{ data: m, error: me }, own] = await Promise.all([
         sb.from("memberships").select("*").eq("user_id", u.user.id).maybeSingle(),
@@ -70,8 +85,11 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
         company = c.data as Company;
         employee = (e.data as Employee) ?? null;
       }
-      setState({ status: "ready", user: u.user, membership: (m as Membership) ?? null, company, employee, isOwner, ownerOnly: isOwner && !m });
+      const ready = { user: u.user, membership: (m as Membership) ?? null, company, employee, isOwner, ownerOnly: isOwner && !m };
+      try { localStorage.setItem(SESSION_CACHE, JSON.stringify(ready)); } catch { /* ignoră */ }
+      setState({ status: "ready", ...ready });
     } catch (err) {
+      if (isNetworkError(err) && await offlineFallback()) return;
       setState({ status: "error", message: humanError(err) });
     }
   }, []);

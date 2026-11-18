@@ -6,9 +6,11 @@ import { NeedsEmployee } from "@/components/shell";
 import { Badge, Button, Empty, ErrorBox, Loading, PageHeader, ProgressBar, StatusBadge } from "@/components/ui";
 import { TaskProgressDialog } from "@/components/TaskProgressDialog";
 import { OdometerCard } from "@/components/OdometerCard";
+import { ClockCard } from "@/components/ClockCard";
 import { AppSetupCard } from "@/components/AppSetup";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
+import { withOfflineCache } from "@/lib/cache";
 import { byId, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTimeEntries } from "@/lib/data";
 import { ASSIGNMENT_STATUS, ENTRY_STATUS, TASK_STATUS, mapsUrl } from "@/lib/labels";
 import { formatMinutes } from "@/lib/hours";
@@ -25,13 +27,13 @@ function Astazi() {
   const today = todayIn(tz);
   const [progressTask, setProgressTask] = useState<Task | null>(null);
 
-  const q = useQuery(async () => {
+  const q = useQuery(() => withOfflineCache(`astazi.${employee!.id}.${today}`, async () => {
     const [f, t] = rangeUtc(today, today, tz);
     const [assignments, projects, tasks, employees, entries] = await Promise.all([
       loadAssignments(f, t), loadProjects(), loadTasks(), loadEmployees(), loadTimeEntries(f, t, { employeeId: employee!.id }),
     ]);
     return { assignments: assignments.filter((a) => a.status !== "anulata"), projects, tasks, employees, entries };
-  }, [today, tz, employee?.id]);
+  }), [today, tz, employee?.id]);
 
   const d = q.data;
   const projects = useMemo(() => byId(d?.projects), [d]);
@@ -44,6 +46,7 @@ function Astazi() {
       <PageHeader title={`Bună, ${employee!.full_name.split(" ")[0]}!`} subtitle={prettyDate(today)} />
       <AppSetupCard compact />
       <OdometerCard />
+      {d && <ClockCard assignments={mine} projects={projects} tasks={tasks} onChanged={q.reload} />}
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}
       {q.loading && !d && <Loading />}
       {d && mine.length === 0 && (

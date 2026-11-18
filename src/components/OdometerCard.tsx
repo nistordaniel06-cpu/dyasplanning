@@ -3,30 +3,34 @@ import { localeTag } from "@/lib/lang";
 import { useState } from "react";
 import { Car, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
+import { withOfflineCache } from "@/lib/cache";
 import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
 import { humanError } from "@/lib/errors";
 import type { Vehicle } from "@/lib/types";
-import { Button, ErrorBox, Field, Input, Loading, Select } from "./ui";
+import { Button, ErrorBox, Field, Input, Loading, Notice, Select } from "./ui";
+import { runOrQueue } from "@/lib/offline";
+import { todayIn } from "@/lib/time";
 
 interface Today { vehicle_id: string; vehicle_name: string; plate: string | null; km: number; reading_date: string }
 
 /** Cardul șoferului: km din bord la plecare, dimineața. */
 export function OdometerCard() {
-  const { employee } = useSession();
-  const q = useQuery(async () => {
+  const { employee, tz } = useSession();
+  const q = useQuery(() => withOfflineCache(`km.${employee?.id}.${todayIn(tz)}`, async () => {
     const sb = supabase();
     const [vehicles, today] = await Promise.all([
       sb.from("vehicles").select("*").eq("active", true).order("name").then((r) => must(r) as Vehicle[]),
       sb.rpc("my_odometer_today").then((r) => must(r) as Today[]),
     ]);
     return { vehicles, today };
-  }, []);
+  }), []);
   const [vehicleId, setVehicleId] = useState<string>("");
   const [km, setKm] = useState("");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState<number | null>(null);
 
   if (!employee?.is_driver) return null;
   const d = q.data;
@@ -37,10 +41,12 @@ export function OdometerCard() {
     const n = Number(km.replace(/[^\d]/g, ""));
     if (!selected || !km.trim() || !Number.isFinite(n)) { setError("Introdu kilometrii de pe bord."); return; }
     setBusy(true); setError(null);
-    const { error } = await supabase().rpc("submit_odometer", { p_vehicle_id: selected, p_km: n });
-    setBusy(false);
-    if (error) { setError(humanError(error)); return; }
-    setEditing(false); setKm("");
+    try {
+      const r = await runOrQueue({ kind: "odometer", label: `Km ${n}`, args: { p_vehicle_id: selected, p_km: n, p_date: todayIn(tz) } });
+      setBusy(false);
+      if (r.queued) { setOffline(n); setEditing(false); setKm(""); return; }
+    } catch (e) { setBusy(false); setError(humanError(e)); return; }
+    setOffline(null); setEditing(false); setKm("");
     await q.reload();
   }
 
@@ -53,6 +59,7 @@ export function OdometerCard() {
       <div className="p-4">
         {q.loading && !d && <Loading />}
         {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}
+        {offline != null && <div className="mb-3"><Notice tone="amber">Fără semnal: {offline.toLocaleString(localeTag())} km sunt salvați pe telefon și se trimit singuri când revine internetul.</Notice></div>}
         {d && d.vehicles.length === 0 && <p className="text-sm text-slate-600">Nu există mașini adăugate. Cere administratorului să adauge mașina.</p>}
         {d && d.vehicles.length > 0 && (done && !editing ? (
           <div className="flex items-center gap-3">

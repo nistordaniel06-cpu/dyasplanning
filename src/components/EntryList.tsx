@@ -1,5 +1,5 @@
 "use client";
-import { AlertTriangle, History } from "lucide-react";
+import { AlertTriangle, History, MapPin } from "lucide-react";
 import type { ReactNode } from "react";
 import { useSession } from "@/lib/session";
 import { ENTRY_STATUS } from "@/lib/labels";
@@ -8,6 +8,21 @@ import { localDate, localTime, shortDate } from "@/lib/time";
 import type { Assignment, Employee, Project, Task, TimeEntry } from "@/lib/types";
 import { plannedMinutes } from "@/lib/reports";
 import { StatusBadge, cx } from "./ui";
+import { PhotoThumbs, useEntryPhotos } from "./EntryPhotos";
+
+/** Ora + locul de început/sfârșit pentru pontajele făcute cu butonul. */
+function ClockInfo({ e }: { e: TimeEntry }) {
+  if (e.source !== "buton" && e.start_lat == null && e.end_lat == null) return null;
+  const link = (lat?: number | null, lon?: number | null) => (lat != null && lon != null ? `https://www.google.com/maps?q=${lat},${lon}` : null);
+  const s = link(e.start_lat, e.start_lon), f = link(e.end_lat, e.end_lon);
+  return (
+    <div className="mt-1 space-y-0.5 text-xs text-slate-500">
+      {e.source === "buton" && <div className="font-medium text-green-800">✓ Pontat cu butonul „Am început / Am terminat”</div>}
+      {(e.start_address || s) && <div><MapPin className="mr-0.5 inline h-3 w-3" />început: {s ? <a className="text-orange-700 underline" href={s} target="_blank" rel="noreferrer"><span data-no-i18n>{e.start_address ?? `${e.start_lat!.toFixed(5)}, ${e.start_lon!.toFixed(5)}`}</span></a> : <span data-no-i18n>{e.start_address}</span>}</div>}
+      {(e.end_address || f) && <div><MapPin className="mr-0.5 inline h-3 w-3" />sfârșit: {f ? <a className="text-orange-700 underline" href={f} target="_blank" rel="noreferrer"><span data-no-i18n>{e.end_address ?? `${e.end_lat!.toFixed(5)}, ${e.end_lon!.toFixed(5)}`}</span></a> : <span data-no-i18n>{e.end_address}</span>}</div>}
+    </div>
+  );
+}
 
 /** Listă de pontaje: tabel pe desktop, carduri pe telefon. */
 export function EntryList({ entries, employees, projects, tasks, assignments, actions, selectable, selected, onToggle, onHistory, showEmployee = true }: {
@@ -25,6 +40,7 @@ export function EntryList({ entries, employees, projects, tasks, assignments, ac
 }) {
   const { tz } = useSession();
   const iv = (e: TimeEntry) => `${localTime(e.started_at, tz)}–${localTime(e.ended_at, tz)}${localDate(e.ended_at, tz) !== localDate(e.started_at, tz) ? " (+1)" : ""}`;
+  const photos = useEntryPhotos(entries.map((e) => e.id));
   const planned = (e: TimeEntry) => (e.assignment_id && assignments?.get(e.assignment_id) ? plannedMinutes(assignments.get(e.assignment_id)!) : null);
 
   return (
@@ -59,6 +75,8 @@ export function EntryList({ entries, employees, projects, tasks, assignments, ac
                     {e.notes && <div className="text-xs italic text-slate-600">„{e.notes}”</div>}
                     {e.flag_note && <div className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-800"><AlertTriangle className="h-3 w-3" />{e.flag_note}</div>}
                     {e.status === "respins" && e.rejection_reason && <div className="mt-1 text-xs text-red-700">Motiv: {e.rejection_reason}</div>}
+                    <ClockInfo e={e} />
+                    <PhotoThumbs photos={photos[e.id]} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{iv(e)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{e.break_minutes} min</td>
@@ -97,6 +115,8 @@ export function EntryList({ entries, employees, projects, tasks, assignments, ac
                   <div className="mt-1 text-sm">Lucrat: <strong>{formatMinutes(e.worked_minutes)}</strong>{p !== null && <span className="text-slate-500"> · planificat {formatMinutes(p)}</span>}</div>
                   {e.flag_note && <div className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-800"><AlertTriangle className="h-3 w-3" />{e.flag_note}</div>}
                   {e.status === "respins" && e.rejection_reason && <div className="mt-1 text-xs text-red-700">Motiv: {e.rejection_reason}</div>}
+                  <ClockInfo e={e} />
+                  <PhotoThumbs photos={photos[e.id]} />
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap justify-end gap-2">

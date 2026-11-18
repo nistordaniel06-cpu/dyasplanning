@@ -47,7 +47,7 @@ function send(res, status, body, headers = {}) {
 }
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type, prefer, accept-profile, content-profile, x-supabase-api-version, range",
+  "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type, prefer, accept-profile, content-profile, x-supabase-api-version, range, x-upsert, cache-control, x-metadata, x-retry-count",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS, PUT",
   "Access-Control-Expose-Headers": "content-range",
 };
@@ -204,6 +204,47 @@ async function auth(req, res, url, bearer) {
   } finally { c.release(); }
 }
 
+// Storage (tip Supabase Storage): încărcarea trece prin RLS-ul real pe storage.objects; fișierele stau în memorie.
+const files = new Map(); // "bucket/path" -> { type, data }
+const readRaw = (req) => new Promise((r) => { const ch = []; req.on("data", (c) => ch.push(c)); req.on("end", () => r(Buffer.concat(ch))); });
+async function storage(req, res, url, sub) {
+  const p = decodeURIComponent(url.pathname.replace(/^\/storage\/v1/, ""));
+  let m;
+  if (req.method === "GET" && (m = p.match(/^\/object\/sign\/([^/]+)\/(.+)$/))) {
+    const f = files.get(`${m[1]}/${m[2]}`);
+    if (!f || url.searchParams.get("token") !== "ok") return send(res, 404, { statusCode: "404", error: "not_found", message: "Object not found" });
+    res.writeHead(200, { "Content-Type": f.type, ...cors }); return res.end(f.data);
+  }
+  if (req.method === "POST" && (m = p.match(/^\/object\/sign\/([^/]+)$/))) {
+    const body = await readBody(req);
+    const out = await withRole(sub, async (c) => {
+      const r = await c.query("select name from storage.objects where bucket_id = $1 and name = any($2)", [m[1], body.paths]);
+      const ok = new Set(r.rows.map((x) => x.name));
+      return body.paths.map((path) => ok.has(path)
+        ? { error: null, path, signedURL: `/object/sign/${m[1]}/${path}?token=ok` }
+        : { error: "Either the object does not exist or you do not have access to it", path, signedURL: null });
+    });
+    return send(res, 200, out);
+  }
+  if ((req.method === "POST" || req.method === "PUT") && (m = p.match(/^\/object\/([^/]+)\/(.+)$/))) {
+    let data = await readRaw(req);
+    let type = (req.headers["content-type"] ?? "application/octet-stream").split(";")[0];
+    if (type === "multipart/form-data") {
+      // supabase-js trimite FormData când primește File/Blob în browser
+      const boundary = req.headers["content-type"].split("boundary=")[1];
+      const parts = data.toString("latin1").split(`--${boundary}`);
+      const part = parts.find((x) => x.includes('name=""') || x.includes("filename=")) ?? parts[1];
+      const [head, ...rest] = part.split("\r\n\r\n");
+      type = (head.match(/Content-Type: ([^\r\n;]+)/i) ?? [])[1] ?? "application/octet-stream";
+      data = Buffer.from(rest.join("\r\n\r\n").replace(/\r\n$/, ""), "latin1");
+    }
+    await withRole(sub, (c) => c.query("insert into storage.objects(bucket_id, name, metadata) values ($1, $2, $3)", [m[1], m[2], { mimetype: type, size: data.length }]));
+    files.set(`${m[1]}/${m[2]}`, { type, data });
+    return send(res, 200, { Id: crypto.randomUUID(), Key: `${m[1]}/${m[2]}` });
+  }
+  return send(res, 404, { msg: `storage ${req.method} ${p} nesuportat` });
+}
+
 http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") return send(res, 204);
   const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -214,6 +255,7 @@ http.createServer(async (req, res) => {
       const claims = verifyJwt(bearer);
       return await rest(req, res, url, claims?.sub ?? null);
     }
+    if (url.pathname.startsWith("/storage/v1")) return await storage(req, res, url, verifyJwt(bearer)?.sub ?? null);
     send(res, 404, { msg: "not found" });
   } catch (e) {
     if (process.env.DEBUG) console.error(req.method, req.url, e.message);

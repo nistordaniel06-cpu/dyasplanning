@@ -10,6 +10,7 @@ import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
 import { AnnouncementBar } from "./Announcement";
 import { Toasts } from "./Toasts";
+import { OfflineSync } from "./OfflineSync";
 import { PresenceAndLocation } from "./LocationConsent";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { isNativeApp, setScreenSecure, startNativePush } from "@/lib/native";
@@ -157,7 +158,7 @@ function FrameInner({ children }: { children: ReactNode }) {
         <BellLink />
       </header>
 
-      <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-10"><AnnouncementBar />{children}</main>
+      <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-10"><OfflineSync /><AnnouncementBar />{children}</main>
       <Toasts />
       <PresenceAndLocation />
 

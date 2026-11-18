@@ -141,6 +141,9 @@ export interface TimeEntry {
   submitted_at: string | null;
   reviewed_at: string | null;
   created_at: string;
+  source?: "manual" | "buton" | "offline";
+  start_lat?: number | null; start_lon?: number | null; start_accuracy?: number | null; start_address?: string | null;
+  end_lat?: number | null; end_lon?: number | null; end_accuracy?: number | null; end_address?: string | null;
 }
 
 export interface TimeEntryHistory {

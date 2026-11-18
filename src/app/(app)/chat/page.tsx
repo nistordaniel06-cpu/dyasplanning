@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Hammer, MessageCirclePlus, Send, Users, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Camera, Hammer, MessageCirclePlus, Mic, Send, Square, Trash2, Users, User as UserIcon } from "lucide-react";
+import { compressImage, extFor, newId, signedUrls, upload } from "@/lib/media";
 import { Button, Empty, ErrorBox, Loading, Modal, PageHeader, cx } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
@@ -14,7 +15,11 @@ import { fmt, localDate, todayIn } from "@/lib/time";
 import type { AppRole } from "@/lib/types";
 
 interface Channel { id: string; kind: "general" | "project" | "direct"; name: string | null; project_id: string | null; color: string | null; last_body: string | null; last_author: string | null; last_at: string | null; unread: number }
-interface Message { id: string; channel_id: string; user_id: string; author_name: string | null; body: string; created_at: string }
+interface Message {
+  id: string; channel_id: string; user_id: string; author_name: string | null; body: string; created_at: string;
+  attachment_path?: string | null; attachment_type?: "image" | "audio" | null; attachment_duration?: number | null;
+}
+const PLACEHOLDER = new Set(["📷 Poză", "🎤 Mesaj vocal"]);
 interface Contact { user_id: string; name: string; role: AppRole; trade: string | null }
 
 export default function ChatPage() {
@@ -90,8 +95,15 @@ function Chat() {
 }
 
 function Conversation({ channelId, channel, onRead }: { channelId: string; channel: Channel | null; onRead: () => void }) {
-  const { user, tz } = useSession();
+  const { user, tz, company } = useSession();
   const [messages, setMessages] = useState<Message[] | null>(null);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [recording, setRecording] = useState<{ rec: MediaRecorder; started: number } | null>(null);
+  const [recSecs, setRecSecs] = useState(0);
+  const [viewer, setViewer] = useState<string | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const chunks = useRef<Blob[]>([]);
+  const cancelRec = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -102,6 +114,8 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
     const { data, error } = await supabase().from("chat_messages").select("*").eq("channel_id", channelId).order("created_at", { ascending: false }).limit(200);
     if (error) { setError(humanError(error)); return; }
     const msgs = (data as Message[]).reverse();
+    const paths = msgs.map((m) => m.attachment_path).filter((x): x is string => !!x);
+    if (paths.length) void signedUrls("chat", paths).then((u) => setUrls((old) => ({ ...old, ...u })));
     setMessages(msgs);
     const newest = msgs[msgs.length - 1]?.id ?? null;
     if (newest !== lastId.current) {
@@ -120,6 +134,60 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
       .subscribe();
     return () => { clearInterval(t); void supabase().removeChannel(ch); };
   }, [load, channelId]);
+
+  async function sendAttachment(blob: Blob, type: "image" | "audio", duration?: number) {
+    setSending(true); setError(null);
+    try {
+      const path = `${company!.id}/${channelId}/${newId()}.${extFor(blob.type)}`;
+      await upload("chat", path, blob);
+      const { error } = await supabase().from("chat_messages").insert({
+        channel_id: channelId, body: type === "image" ? text.trim() : "", attachment_path: path, attachment_type: type, attachment_duration: duration ?? null,
+      });
+      if (error) throw error;
+      if (type === "image") setText("");
+      await load();
+    } catch (e) { setError(humanError(e)); }
+    setSending(false);
+  }
+
+  async function pickPhoto(files: FileList | null) {
+    const f = files?.[0];
+    if (photoInput.current) photoInput.current.value = "";
+    if (!f) return;
+    await sendAttachment(await compressImage(f), "image");
+  }
+
+  async function startRecording() {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"].find((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t));
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunks.current = []; cancelRec.current = false;
+      rec.ondataavailable = (ev) => { if (ev.data.size) chunks.current.push(ev.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const secs = Math.max(1, Math.round((Date.now() - started) / 1000));
+        setRecording(null);
+        if (cancelRec.current || !chunks.current.length) return;
+        void sendAttachment(new Blob(chunks.current, { type: (rec.mimeType || mime || "audio/webm").split(";")[0] }), "audio", secs);
+      };
+      const started = Date.now();
+      rec.start();
+      setRecording({ rec, started }); setRecSecs(0);
+    } catch {
+      setError("Nu am acces la microfon. Permite microfonul pentru acest site din setările telefonului.");
+    }
+  }
+  useEffect(() => {
+    if (!recording) return;
+    const t = setInterval(() => {
+      const s = Math.round((Date.now() - recording.started) / 1000);
+      setRecSecs(s);
+      if (s >= 180) recording.rec.stop(); // maximum 3 minute
+    }, 250);
+    return () => clearInterval(t);
+  }, [recording]);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -158,7 +226,22 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
               <div className={cx("flex", mine ? "justify-end" : "justify-start")}>
                 <div className={cx("max-w-[80%] rounded-2xl px-3 py-2 text-[15px] shadow-sm", mine ? "rounded-br-sm bg-orange-600 text-white" : "rounded-bl-sm bg-white text-slate-900 ring-1 ring-slate-200")}>
                   {showAuthor && <div className="mb-0.5 text-xs font-semibold text-orange-700">{m.author_name}</div>}
-                  <div data-no-i18n className="whitespace-pre-wrap break-words">{m.body}</div>
+                  {m.attachment_type === "image" && m.attachment_path && (
+                    urls[m.attachment_path]
+                      ? <button type="button" onClick={() => setViewer(urls[m.attachment_path!])} className="-mx-1 mb-1 block overflow-hidden rounded-xl">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={urls[m.attachment_path]} alt="Poză" className="max-h-72 w-full object-cover" loading="lazy" />
+                        </button>
+                      : <div className="mb-1 h-40 w-56 animate-pulse rounded-xl bg-black/10" />
+                  )}
+                  {m.attachment_type === "audio" && m.attachment_path && (
+                    <div className="mb-1 flex items-center gap-2">
+                      <Mic className="h-4 w-4 shrink-0 opacity-80" />
+                      {urls[m.attachment_path] ? <audio controls preload="metadata" src={urls[m.attachment_path]} className="h-10 w-56 max-w-full" /> : <span className="text-sm opacity-80">…</span>}
+                      {m.attachment_duration ? <span className="text-xs opacity-80">{Math.floor(m.attachment_duration / 60)}:{String(m.attachment_duration % 60).padStart(2, "0")}</span> : null}
+                    </div>
+                  )}
+                  {!(m.attachment_path && PLACEHOLDER.has(m.body)) && <div data-no-i18n className="whitespace-pre-wrap break-words">{m.body}</div>}
                   <div className={cx("mt-0.5 text-right text-[10px]", mine ? "text-orange-100" : "text-slate-400")}>{fmt(m.created_at, tz, "HH:mm")}</div>
                 </div>
               </div>
@@ -168,12 +251,28 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
         <div ref={bottom} />
       </div>
       {error && <div className="px-3"><ErrorBox message={error} /></div>}
+      <Modal open={!!viewer} onClose={() => setViewer(null)} title="Poză" wide>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {viewer && <img src={viewer} alt="Poză" className="mx-auto max-h-[75vh] w-auto rounded-lg" />}
+      </Modal>
+      {recording ? (
+        <div className="flex items-center gap-3 border-t border-slate-200 bg-white p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <button type="button" aria-label="Anulează înregistrarea" onClick={() => { cancelRec.current = true; recording.rec.stop(); }} className="rounded-full p-3 text-slate-500 hover:bg-slate-100"><Trash2 className="h-5 w-5" /></button>
+          <div className="flex flex-1 items-center gap-2 font-semibold text-red-700"><span className="h-3 w-3 animate-pulse rounded-full bg-red-600" />Se înregistrează… {Math.floor(recSecs / 60)}:{String(recSecs % 60).padStart(2, "0")}</div>
+          <Button type="button" variant="primary" className="h-11 rounded-full px-4" onClick={() => recording.rec.stop()}><Square className="h-4 w-4" />Trimite</Button>
+        </div>
+      ) : (
       <form onSubmit={send} className="flex items-end gap-2 border-t border-slate-200 bg-white p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <button type="button" aria-label="Fă o poză" disabled={sending} onClick={() => photoInput.current?.click()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"><Camera className="h-5 w-5" /></button>
+        <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void pickPhoto(e.target.files)} />
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={4000} placeholder="Scrie un mesaj…"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(min-width: 768px)").matches) { e.preventDefault(); void send(e); } }}
           className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-slate-300 px-4 py-2.5 text-base focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200" />
-        <Button type="submit" variant="primary" className="h-11 w-11 rounded-full p-0" loading={sending} disabled={!text.trim()} aria-label="Trimite"><Send className="h-5 w-5" /></Button>
+        {text.trim()
+          ? <Button type="submit" variant="primary" className="h-11 w-11 rounded-full p-0" loading={sending} aria-label="Trimite"><Send className="h-5 w-5" /></Button>
+          : <Button type="button" variant="primary" className="h-11 w-11 rounded-full p-0" loading={sending} onClick={startRecording} aria-label="Mesaj vocal"><Mic className="h-5 w-5" /></Button>}
       </form>
+      )}
     </section>
   );
 }

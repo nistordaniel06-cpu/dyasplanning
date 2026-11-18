@@ -8,6 +8,10 @@ import { localDate, localTime, shiftFromLocal, todayIn } from "@/lib/time";
 import { employeeSchedule } from "@/lib/schedule";
 import type { Assignment, Employee, Project, Task, TimeEntry, TimeEntryStatus } from "@/lib/types";
 import { Button, ErrorBox, Field, Input, Modal, Notice, Select, Textarea } from "./ui";
+import { PhotoPicker } from "./PhotoPicker";
+import { PhotoThumbs, useEntryPhotos } from "./EntryPhotos";
+import { isNetworkError, runOrQueue } from "@/lib/offline";
+import { attachEntryPhotos } from "@/lib/media";
 
 export interface EntryPrefill {
   employeeId?: string;
@@ -47,6 +51,9 @@ export function TimeEntryForm({ entry, prefill, employees, projects, tasks, assi
   const [notes, setNotes] = useState(entry?.notes ?? "");
   const [busy, setBusy] = useState<TimeEntryStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<Blob[]>([]);
+  const [savedOffline, setSavedOffline] = useState(false);
+  const existingPhotos = useEntryPhotos(entry ? [entry.id] : []);
 
   const shift = useMemo(() => (date && start && end ? shiftFromLocal(date, start, end, tz) : null), [date, start, end, tz]);
   const v = shift ? validateShift(shift.startsAt, shift.endsAt, Number(breakMin) || 0) : { ok: false, error: "Completează data și orele.", minutes: 0 };
@@ -70,11 +77,26 @@ export function TimeEntryForm({ entry, prefill, employees, projects, tasks, assi
       break_minutes: Number(breakMin) || 0, notes: notes.trim() || null, status,
     };
     const sb = supabase();
-    const res = entry
-      ? await sb.from("time_entries").update(payload).eq("id", entry.id).select().single()
-      : await sb.from("time_entries").insert({ ...payload, company_id: company!.id }).select().single();
+    if (!entry) {
+      // pontaj nou: fără semnal se salvează pe telefon și se trimite mai târziu (cu tot cu poze)
+      try {
+        const r = await runOrQueue({
+          kind: "time_entry", label: `Pontaj ${date} ${start}–${end}`,
+          row: { ...payload, company_id: company!.id }, photos, meta: { companyId: company!.id, employeeId },
+        });
+        setBusy(null);
+        if (r.queued) { setSavedOffline(true); setTimeout(() => onSaved(status), 1800); return; }
+        onSaved(status);
+      } catch (e) { setBusy(null); setError(humanError(e)); }
+      return;
+    }
+    const res = await sb.from("time_entries").update(payload).eq("id", entry.id).select().single();
+    if (!res.error && photos.length) {
+      try { await attachEntryPhotos({ companyId: company!.id, employeeId: entry.employee_id, entryId: entry.id, photos }); }
+      catch (e) { setBusy(null); setError(humanError(e)); return; }
+    }
     setBusy(null);
-    if (res.error) { setError(humanError(res.error)); return; }
+    if (res.error) { setError(isNetworkError(res.error) ? "Fără semnal: modificarea unui pontaj existent se poate face când revine internetul." : humanError(res.error)); return; }
     onSaved(status);
   }
 
@@ -128,6 +150,13 @@ export function TimeEntryForm({ entry, prefill, employees, projects, tasks, assi
           {v.ok ? <>Timp efectiv lucrat: <strong className="text-base">{formatMinutes(v.minutes)}</strong></> : <span className="font-medium text-red-700">{v.error}</span>}
           {planned && <div className="mt-1 text-slate-600">Planificat: {localTime(planned.starts_at, tz)}–{localTime(planned.ends_at, tz)} (pauză {planned.break_minutes} min)</div>}
         </div>
+        <Field label="Poze cu lucrarea (opțional)" hint="Dovadă pentru client: cum arată lucrarea la final.">
+          <>
+            <PhotoThumbs photos={entry ? existingPhotos[entry.id] : undefined} />
+            {canEdit && <div className="mt-2"><PhotoPicker photos={photos} onChange={setPhotos} label="Fă o poză" /></div>}
+          </>
+        </Field>
+        {savedOffline && <Notice tone="amber">Fără semnal: pontajul este salvat pe telefon și se trimite singur când revine internetul.</Notice>}
         <Field label="Observații"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="ex. am rămas mai mult pentru finisaje" disabled={!canEdit} /></Field>
         {error && <ErrorBox message={error} />}
       </div>

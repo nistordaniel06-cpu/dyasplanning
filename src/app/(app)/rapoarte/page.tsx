@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Download } from "lucide-react";
 import { RequireRole } from "@/components/shell";
 import { Button, Card, Empty, ErrorBox, Loading, Notice, PageHeader, Select, Tabs, cx } from "@/components/ui";
+import { MonthlyPdfButton } from "@/components/MonthlyPdf";
 import { PeriodPicker, presetRange, type Preset } from "@/components/PeriodPicker";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
@@ -50,9 +51,12 @@ function Rapoarte() {
   return (
     <div>
       <PageHeader title="Rapoarte" subtitle="Ore planificate față de ore efectiv lucrate"
-        actions={d && agg && <>
+        actions={<>
+          <MonthlyPdfButton variant="primary" employees={d?.employees} />
+          {d && agg && <>
           <Button onClick={() => downloadText(`${fileBase}_sumar_${by === "employee" ? "angajati" : "lucrari"}.csv`, summaryCsv(agg.rows, agg.total, col))} disabled={agg.rows.length === 0}><Download className="h-4 w-4" />CSV sumar</Button>
           <Button onClick={() => downloadText(`${fileBase}_pontaje.csv`, entriesCsv(d.entries, emp, proj, tk, tz))} disabled={d.entries.length === 0}><Download className="h-4 w-4" />CSV pontaje</Button>
+          </>}
         </>} />
 
       <div className="mb-4 flex flex-wrap gap-2">

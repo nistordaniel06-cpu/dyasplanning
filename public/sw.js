@@ -1,9 +1,48 @@
 // DYASPlanning — service worker: notificări push + instalare ca aplicație.
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+const SHELL = "dyas-shell-v1";
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(["/icon-192.png"]).catch(() => undefined)));
+});
+self.addEventListener("activate", (event) => event.waitUntil((async () => {
+  for (const k of await caches.keys()) if (k.startsWith("dyas-shell-") && k !== SHELL) await caches.delete(k);
+  await self.clients.claim();
+})()));
 
-// Fără cache: datele vin mereu proaspete de pe server.
-self.addEventListener("fetch", () => {});
+// Fără semnal: aplicația se deschide din ultima versiune salvată pe telefon.
+// Datele (Supabase, /api) nu se pun niciodată în cache aici.
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/_next/static/") || /\.(png|svg|ico|woff2?|ttf)$/.test(url.pathname)) {
+    event.respondWith(caches.open(SHELL).then(async (c) => {
+      const hit = await c.match(req);
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res.ok) c.put(req, res.clone());
+      return res;
+    }));
+    return;
+  }
+  if (req.mode === "navigate") {
+    event.respondWith((async () => {
+      const c = await caches.open(SHELL);
+      try {
+        const res = await fetch(req);
+        if (res.ok && !res.redirected) c.put(req, res.clone());
+        return res;
+      } catch (e) {
+        const hit = await c.match(req, { ignoreSearch: true });
+        if (hit) return hit;
+        // orice pagină a aplicației deschisă înainte poate porni aplicația (navigarea e pe client)
+        for (const p of ["/astazi", "/", "/pontaj", "/dashboard"]) { const r = await c.match(p); if (r) return r; }
+        return Response.error();
+      }
+    })());
+  }
+});
 
 // Traducerea notificărilor în engleză (același dicționar ca aplicația: /i18n-en.json)
 let dictPromise = null;

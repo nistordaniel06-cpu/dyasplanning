@@ -151,6 +151,42 @@ P = [
  (r"^ultima dată: (.+)$", "last opened: $1"),
  (r"^(.+) a (adăugat|modificat|șters) (\d+) (\S+)$", "$1 $2 $3 $4"),
 ]
+
+exact.update({  # teren: pontaj cu buton, poze, chat vocal, fără semnal, PDF
+ "Adaugă poză": "Add photo", "Am terminat": "I'm done", "Am început": "I've started", "Anulează tura": "Cancel shift",
+ "Anulează înregistrarea": "Cancel recording", "Anulezi tura începută? Nu se salvează nicio oră.": "Cancel the started shift? No hours will be saved.",
+ "Apasă când începi lucrul. Ora și locul se notează singure.": "Tap when you start work. The time and place are recorded automatically.",
+ "Absențe": "Absences", "Descarcă PDF": "Download PDF", "Dovadă pentru client: cum arată lucrarea la final.": "Proof for the client: how the work looks at the end.",
+ "Elimină poza": "Remove photo",
+ "Foaia are fiecare zi din lună, lucrarea, intervalul, pauza și orele, plus totalul de ore aprobate și locul pentru semnături. Gata de trimis la contabilitate.": "The sheet has every day of the month, the job, time, break and hours, plus total approved hours and space for signatures. Ready to send to accounting.",
+ "Foaie de pontaj lunară": "Monthly timesheet", "Fă o poză": "Take a photo", "Fără semnal.": "No signal.", "Fără semnal:": "No signal:",
+ "Fără semnal. Pontajul, „Am început / Am terminat” și km se salvează pe telefon și se trimit când revine internetul.": "No signal. Timesheets, “I've started / I'm done” and km are saved on the phone and sent when the internet is back.",
+ "Fără semnal: modificarea unui pontaj existent se poate face când revine internetul.": "No signal: an existing timesheet can be edited when the internet is back.",
+ "Fără semnal: ora de început e salvată pe telefon și se trimite când revine internetul.": "No signal: the start time is saved on the phone and sent when the internet is back.",
+ "Fără semnal: pontajul este salvat pe telefon și se trimite singur când revine internetul.": "No signal: the timesheet is saved on the phone and sent automatically when the internet is back.",
+ "Fără semnal: pontajul și pozele sunt salvate pe telefon și se trimit singure când revine internetul.": "No signal: the timesheet and photos are saved on the phone and sent automatically when the internet is back.",
+ "Generat": "Generated", "Lucrarea": "Job", "Lucrezi acum": "You're working now", "Luna": "Month", "Mesaj vocal": "Voice message",
+ "Nu am acces la microfon. Permite microfonul pentru acest site din setările telefonului.": "No access to the microphone. Allow the microphone for this site in your phone settings.",
+ "Nu există ore sau absențe în luna aleasă.": "There are no hours or absences in the chosen month.",
+ "Observații (opțional)": "Notes (optional)", "Ore trimise, încă neaprobate": "Submitted, not yet approved", "PDF lunar": "Monthly PDF",
+ "Pagina": "Page", "Pontaj cu un buton": "One-tap clock-in", "Poze cu lucrarea (opțional)": "Photos of the work (optional)",
+ "Poze la pontaj": "Timesheet photos", "Poză": "Photo", "Poză de la lucrare": "Photo from the job", "Raport lunar PDF": "Monthly PDF report",
+ "Se pregătește…": "Preparing…", "Se înregistrează…": "Recording…", "Semnătură administrator": "Manager signature", "Semnătură angajat": "Employee signature",
+ "Toți angajații (o pagină pentru fiecare)": "All employees (one page each)", "Total ore": "Total hours", "Zile lucrate": "Days worked",
+ "Trimite o poză": "Send a photo", "Trimite pontajul": "Submit timesheet",
+ "Unele date salvate fără semnal nu au putut fi trimise:": "Some data saved without signal could not be sent:",
+ "km sunt salvați pe telefon și se trimit singuri când revine internetul.": "km are saved on the phone and sent automatically when the internet is back.",
+ "înregistrări sunt salvate pe telefon și se trimit singure când revine internetul.": "records are saved on the phone and sent automatically when the internet is back.",
+ "Se trimit datele salvate pe telefon (": "Sending data saved on the phone (",
+ "sfârșit:": "end:", "început:": "start:", "început la": "started at",
+ "✓ Pontat cu butonul „Am început / Am terminat”": "✓ Clocked with “I've started / I'm done”",
+ "🎤 Mesaj vocal": "🎤 Voice message", "📷 Poză": "📷 Photo",
+})
+P += [
+ (r"^Se trimit datele salvate pe telefon \((\d+)\)\.$", "Sending data saved on the phone ($1)."),
+ (r"^Fără semnal\. (\d+) înregistrări sunt salvate pe telefon și se trimit singure când revine internetul\.$", "No signal. $1 records are saved on the phone and sent automatically when the internet is back."),
+ (r"^Fără semnal: ([\d.,\s]+) km sunt salvați pe telefon și se trimit singuri când revine internetul\.$", "No signal: $1 km are saved on the phone and sent automatically when the internet is back."),
+]
 for r, _ in P: re.compile(r)
 G = [  # înlocuiri în interiorul textului
  [r"\b(Lun|Mar|Mie|Joi|Vin|Sâm|Dum)(?= \d\d\.\d\d)", {"Lun": "Mon", "Mar": "Tue", "Mie": "Wed", "Joi": "Thu", "Vin": "Fri", "Sâm": "Sat", "Dum": "Sun"}],

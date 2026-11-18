@@ -6,6 +6,7 @@ import { ArrowLeft, KeyRound, Pencil, Plus, Trash2, UserMinus } from "lucide-rea
 import { RequireRole } from "@/components/shell";
 import { Badge, Button, Card, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, StatusBadge, Textarea } from "@/components/ui";
 import { EmployeeForm } from "@/components/EmployeeForm";
+import { MonthlyPdfButton } from "@/components/MonthlyPdf";
 import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
@@ -90,6 +91,7 @@ function Angajat() {
         subtitle={<span className="flex flex-wrap items-center gap-2">{e.trade ? <Badge tone="blue">{e.trade}</Badge> : "—"}{team && <> · {team.name}</>}{!e.active && <Badge tone="gray">Inactiv</Badge>}{e.user_id ? <Badge tone="green">Are acces</Badge> : <Badge tone="gray">Fără acces</Badge>}{e.is_driver && <Badge tone="orange">Șofer</Badge>}</span>}
         actions={<>
           {e.active && <Button onClick={() => setInviteOpen(true)}><KeyRound className="h-4 w-4" />{e.user_id ? "Cod nou de acces" : "Acces în aplicație"}</Button>}
+          <MonthlyPdfButton employeeId={e.id} employees={[e]} />
           <Button onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" />Modifică</Button>
           {e.user_id !== s.user?.id && <Button variant="ghost" onClick={() => setRemoveOpen(true)}><UserMinus className="h-4 w-4" />Elimină / șterge</Button>}
         </>} />
