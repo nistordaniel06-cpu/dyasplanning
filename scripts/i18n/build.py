@@ -248,7 +248,7 @@ exact.update({  # teren: pontaj cu buton, poze, chat vocal, fără semnal, PDF
  "Ai trimis multe cereri în ultima oră. Încearcă puțin mai târziu.": "You've sent many requests in the last hour. Try again a bit later.",
  "Răspuns la cererea de ajutor": "Reply to your help request", "Scrie un titlu pentru mesaj.": "Write a title for the message.",
  "Ce e nou": "What's new",
- "Firmă nouă": "New company", "Numele administratorului": "Administrator name", "Email administrator": "Administrator email",
+ "Firme noi": "New companies", "Săptămâna asta": "This week", "Luna asta": "This month", "Ultimele înscrise": "Latest sign-ups", "Nicio firmă încă.": "No companies yet.", "fără administrator": "no administrator", "conturi": "accounts", "Firmă nouă": "New company", "Numele administratorului": "Administrator name", "Email administrator": "Administrator email",
  "Cu acest email intră în aplicație.": "They sign in to the app with this email.", "Minim 8 caractere. O poate schimba după prima intrare.": "At least 8 characters. They can change it after the first sign-in.",
  "Creează firma": "Create company", "Firma a fost creată. Administratorul poate intra imediat cu emailul și parola de mai jos.": "The company was created. The administrator can sign in right away with the email and password below.",
  "Copiază datele": "Copy details", "Ascunde parola": "Hide password", "Arată parola": "Show password", "Parolă nouă": "New password",

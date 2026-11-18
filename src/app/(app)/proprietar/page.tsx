@@ -73,13 +73,43 @@ function ago(iso: string | null): string {
 }
 const dt = (iso: string) => new Date(iso).toLocaleString(localeTag(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const today = () => new Date().toISOString().slice(0, 10);
-/** Lunea ultimelor n săptămâni (YYYY-MM-DD), ca în baza de date (date_trunc week, UTC). */
-function lastWeeks(n: number): string[] {
-  const d = new Date(); d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return Array.from({ length: n }, (_, i) => { const x = new Date(d); x.setUTCDate(d.getUTCDate() - 7 * (n - 1 - i)); return x.toISOString().slice(0, 10); });
+/** Firme noi: câte s-au înscris (săptămâna asta / luna asta / total) și ultimele înscrise. */
+function SignupsCard({ companies, onCompany }: { companies: OwnerCompany[]; onCompany: (id: string) => void }) {
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setHours(0, 0, 0, 0); weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const since = (d: Date) => companies.filter((c) => new Date(c.created_at) >= d).length;
+  const latest = [...companies].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5);
+  const nums: [string, number][] = [["Săptămâna asta", since(weekStart)], ["Luna asta", since(monthStart)], ["Total", companies.length]];
+  return (
+    <Card title="Firme noi">
+      <div className="grid grid-cols-3 divide-x divide-slate-100 rounded-lg bg-slate-50 py-2 text-center">
+        {nums.map(([l, n]) => (
+          <div key={l}><div className="text-xl font-bold tabular-nums">{n}</div><div className="text-[11px] font-semibold uppercase text-slate-500">{l}</div></div>
+        ))}
+      </div>
+      {latest.length === 0 ? <p className="mt-3 text-sm text-slate-600">Nicio firmă încă.</p> : (
+        <>
+          <div className="mt-3 text-xs font-semibold uppercase text-slate-500">Ultimele înscrise</div>
+          <ul className="mt-1 divide-y divide-slate-100 text-sm">
+            {latest.map((c) => (
+              <li key={c.id}>
+                <button onClick={() => onCompany(c.id)} className="flex w-full items-center gap-3 py-2 text-left hover:bg-slate-50">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold" data-no-i18n>{c.name}</span>
+                    <span className="block truncate text-xs text-slate-500">{c.admin_email ? <span data-no-i18n>{c.admin_email}</span> : "fără administrator"} · {c.employees} angajați · {c.users} conturi</span>
+                  </span>
+                  <span className="shrink-0 text-right text-xs text-slate-500">{ago(c.created_at)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Card>
+  );
 }
-const fmtWeek = (w: string) => w.slice(5).split("-").reverse().join(".");
+
 
 export default function ProprietarPage() {
   const { isOwner } = useSession();
@@ -103,6 +133,7 @@ function Proprietar() {
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "prezentare");
   const help = useQuery(async () => (must(await supabase().rpc("owner_support_list", { p_status: "nou" })) as unknown[]).length, []);
   const newHelp = help.data ?? 0;
+  const [openCompany, setOpenCompany] = useState<string | null>(null);
   const [companyFilter, setCompanyFilter] = useState<string>("");
   const [userId, setUserId] = useState<string | null>(null);
   return (
@@ -122,8 +153,8 @@ function Proprietar() {
           { value: "platforma", label: "Platformă" },
         ]} />
       </div>
-      {tab === "prezentare" && <OverviewTab onOpen={(t) => setTab(t)} />}
-      {tab === "firme" && <CompaniesTab onLogins={(id) => { setCompanyFilter(id); setTab("conectari"); }} onUser={setUserId} />}
+      {tab === "prezentare" && <OverviewTab onOpen={(t) => setTab(t)} onCompany={(id) => { setOpenCompany(id); setTab("firme"); }} />}
+      {tab === "firme" && <CompaniesTab initialOpen={openCompany} onLogins={(id) => { setCompanyFilter(id); setTab("conectari"); }} onUser={setUserId} />}
       {tab === "activitate" && <ActivityTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
       {tab === "conectari" && <LoginsTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
       {tab === "harta" && <MapTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
@@ -138,13 +169,14 @@ function Proprietar() {
 }
 
 // ---------- Prezentare ----------
-function OverviewTab({ onOpen }: { onOpen: (t: Tab) => void }) {
-  const q = useQuery(async () => must(await supabase().rpc("owner_overview")) as Overview, []);
+function OverviewTab({ onOpen, onCompany }: { onOpen: (t: Tab) => void; onCompany: (id: string) => void }) {
+  const q = useQuery(async () => {
+    const [o, list] = await Promise.all([supabase().rpc("owner_overview"), supabase().rpc("owner_companies")]);
+    return { ...(must(o) as Overview), list: must(list) as OwnerCompany[] };
+  }, []);
   if (q.loading && !q.data) return <Loading />;
   if (q.error) return <ErrorBox message={q.error} onRetry={q.reload} />;
   const o = q.data!;
-  const weeks = lastWeeks(12).map((w) => ({ week: w, count: o.signups_by_week.find((x) => x.week === w)?.count ?? 0 }));
-  const max = Math.max(1, ...weeks.map((w) => w.count));
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -159,17 +191,7 @@ function OverviewTab({ onOpen }: { onOpen: (t: Tab) => void }) {
       </div>
       {!o.signup_enabled && <Notice tone="amber">Înscrierea firmelor noi este <strong>închisă</strong>. O poți redeschide din tab-ul Platformă.</Notice>}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Firme noi pe săptămână">
-          <div className="flex h-32 items-end gap-1 border-b border-slate-200">
-            {weeks.map((w) => (
-              <div key={w.week} className="flex h-full flex-1 flex-col items-center justify-end" title={`Săptămâna ${fmtWeek(w.week)}: ${w.count}`}>
-                {w.count > 0 && <span className="mb-0.5 text-[11px] font-semibold text-slate-700">{w.count}</span>}
-                <div className={cx("w-full max-w-[18px] rounded-t", w.count ? "bg-orange-500" : "bg-slate-100")} style={{ height: w.count ? `${Math.max(8, (w.count / max) * 96)}px` : "3px" }} />
-              </div>
-            ))}
-          </div>
-          <div className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{fmtWeek(weeks[0].week)}</span><span>săpt. curentă</span></div>
-        </Card>
+        <SignupsCard companies={q.data!.list} onCompany={onCompany} />
         <Card title="Țări · ultimele 30 de zile" action={<button className="text-sm font-semibold text-orange-700" onClick={() => onOpen("conectari")}>Detalii</button>}>
           {o.countries.length === 0 ? <p className="text-sm text-slate-600">Încă nu există conectări înregistrate. Apar de la următoarea deschidere a aplicației.</p> : (
             <ul className="divide-y divide-slate-100 text-sm">
@@ -185,11 +207,11 @@ function OverviewTab({ onOpen }: { onOpen: (t: Tab) => void }) {
 }
 
 // ---------- Firme ----------
-function CompaniesTab({ onLogins, onUser }: { onLogins: (id: string) => void; onUser: (id: string) => void }) {
+function CompaniesTab({ onLogins, onUser, initialOpen }: { onLogins: (id: string) => void; onUser: (id: string) => void; initialOpen?: string | null }) {
   const q = useQuery(async () => must(await supabase().rpc("owner_companies")) as OwnerCompany[], []);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"" | "activ" | "suspendat">("");
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(initialOpen ?? null);
   const list = useMemo(() => (q.data ?? []).filter((c) =>
     (!status || c.status === status) &&
     (!search || `${c.name} ${c.admin_email ?? ""}`.toLowerCase().includes(search.toLowerCase()))), [q.data, search, status]);
