@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  Activity,
   BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, ShieldCheck, Sun, User, Users, X,
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
@@ -29,6 +30,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/pontaje", label: "Pontaje", icon: ClipboardCheck },
   { href: "/rapoarte", label: "Rapoarte", icon: BarChart3 },
   { href: "/masini", label: "Mașini", icon: Car },
+  { href: "/utilizare", label: "Utilizare", icon: Activity },
   { href: "/setari", label: "Setări", icon: Settings },
 ];
 const EMPLOYEE_NAV: NavItem[] = [

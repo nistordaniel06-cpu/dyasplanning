@@ -35,7 +35,7 @@ with sync_playwright() as p:
     a.screenshot(path="shots/90_login_en.png"); scan(a,"login"); ok("pagina de autentificare în engleză")
     a.get_by_label("Phone number").fill("patron@firma.ro"); a.get_by_label("Password").fill("parola1234"); a.get_by_role("button", name="Sign in").click()
     a.wait_for_url(re.compile("/dashboard")); expect(a.get_by_role("heading", name="Dashboard")).to_be_visible()
-    for path,name in [("/dashboard","dashboard"),("/planning","planning"),("/lucrari","lucrari"),("/angajati","angajati"),("/pontaje","pontaje"),("/rapoarte","rapoarte"),("/masini","masini"),("/setari","setari"),("/chat","chat"),("/notificari","notificari"),("/planning/aloca","aloca")]:
+    for path,name in [("/dashboard","dashboard"),("/planning","planning"),("/lucrari","lucrari"),("/angajati","angajati"),("/pontaje","pontaje"),("/rapoarte","rapoarte"),("/masini","masini"),("/setari","setari"),("/chat","chat"),("/notificari","notificari"),("/planning/aloca","aloca"),("/utilizare","utilizare")]:
         a.goto(B+path); a.wait_for_load_state("networkidle"); scan(a,name); a.screenshot(path=f"shots/91_en_{name}.png", full_page=True)
     a.goto(B+"/lucrari"); a.locator("main a[href^='/lucrari/']").first.click(); a.wait_for_load_state("networkidle"); scan(a,"lucrare"); a.screenshot(path="shots/91_en_lucrare.png", full_page=True)
     a.goto(B+"/angajati"); a.locator("main a[href^='/angajati/']").first.click(); a.wait_for_load_state("networkidle"); scan(a,"angajat"); a.screenshot(path="shots/91_en_angajat.png", full_page=True)

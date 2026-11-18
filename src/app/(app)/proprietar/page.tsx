@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, Copy, Crosshair, Globe, MapPin, Megaphone, Search } from "lucide-react";
 import dynamic from "next/dynamic";
 import type { MapPoint } from "@/components/owner/OwnerMap";
+import { UsageReport, type Usage } from "@/components/UsageReport";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, Stat, Tabs, Textarea, cx } from "@/components/ui";
 const OwnerMap = dynamic(() => import("@/components/owner/OwnerMap").then((m) => m.OwnerMap), { ssr: false, loading: () => <Loading /> });
 import { useSession } from "@/lib/session";
@@ -226,6 +227,7 @@ function CompaniesTab({ onLogins, onUser }: { onLogins: (id: string) => void; on
 }
 
 function CompanyDetails({ c, onSaved, onLogins, onDeleted, onUser }: { c: OwnerCompany; onSaved: () => Promise<void>; onLogins: () => void; onDeleted: () => Promise<void>; onUser: (id: string) => void }) {
+  const [usageOpen, setUsageOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
   const [delName, setDelName] = useState("");
   const [delBusy, setDelBusy] = useState(false);
@@ -280,6 +282,21 @@ function CompanyDetails({ c, onSaved, onLogins, onDeleted, onUser }: { c: OwnerC
           ? <Button variant="danger" onClick={() => save("suspendat")} disabled={busy}>Suspendă firma</Button>
           : <Button onClick={() => save("activ")} disabled={busy}>Reactivează firma</Button>}
         <Button variant="ghost" onClick={onLogins}><MapPin className="h-4 w-4" /> Conectările firmei</Button>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 p-3">
+        <button className="flex w-full items-center justify-between text-sm font-semibold" onClick={() => setUsageOpen(!usageOpen)}>
+          <span>Utilizarea aplicației</span>{usageOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {usageOpen && (
+          <div className="mt-3">
+            <UsageReport load={async (days) => {
+              const { data, error } = await supabase().rpc("owner_company_usage", { p_company: c.id, p_days: days });
+              if (error) throw error;
+              return data as Usage;
+            }} />
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg border border-red-200 bg-red-50/50 p-3">

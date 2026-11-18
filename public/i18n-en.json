@@ -943,6 +943,30 @@
 "aprobate": "approved",
 ". Orele trimise și ciornele sunt afișate separat și nu sunt incluse în coloana „Aprobate”. Pontajele respinse nu se adună.": ". Submitted hours and drafts are shown separately and are not included in the “Approved” column. Rejected timesheets are not added up.",
 "Toată firma": "Whole company",
+"Utilizare": "Usage",
+"Utilizare aplicație": "App usage",
+"Utilizarea aplicației": "App usage",
+"Cine din echipă folosește aplicația, cine nu mai intră și cine nu primește notificări.": "Who on the team uses the app, who has stopped opening it and who doesn't get notifications.",
+"Au intrat azi": "Opened today",
+"Folosesc aplicația": "Using the app",
+"intrat în ultimele 2 zile": "opened in the last 2 days",
+"Nu mai intră": "Stopped using it",
+"de peste 7 zile sau niciodată": "for over 7 days or never",
+"Notificări pornite": "Notifications on",
+"Persoane care au deschis aplicația, pe zile": "People who opened the app, by day",
+"Folosește aplicația": "Uses the app",
+"Intră rar": "Rarely opens it",
+"Nu a mai intrat": "Hasn't opened it lately",
+"Nu a intrat niciodată": "Never opened it",
+"Fără cont": "No account",
+"aplicație instalată": "app installed",
+"notificări pornite": "notifications on",
+"fără notificări": "no notifications",
+"zile active": "active days",
+"citiri km": "km readings",
+"mesaje": "messages",
+"ultima dată:": "last opened:",
+"Cine nu primește notificări nu află când i se schimbă programul. Roagă-l să deschidă aplicația și să apese „Activează notificările”.": "People without notifications don't find out when their schedule changes. Ask them to open the app and tap “Turn on notifications”.",
 "lucrarea": "the job",
 "misiunea": "the task",
 "alocarea": "the assignment",
@@ -1307,6 +1331,22 @@
 [
 "^(\\d+) conectări$",
 "$1 sign-ins"
+],
+[
+"^din (\\d+) cu cont$",
+"of $1 with an account"
+],
+[
+"^(\\d+) au aplicația instalată$",
+"$1 have the app installed"
+],
+[
+"^Pe persoane \\((\\d+)\\)$",
+"By person ($1)"
+],
+[
+"^ultima dată: (.+)$",
+"last opened: $1"
 ],
 [
 "^(.+) a (adăugat|modificat|șters) (\\d+) (\\S+)$",
