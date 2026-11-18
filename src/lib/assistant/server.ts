@@ -26,7 +26,7 @@ export async function contextFor(token: string): Promise<Ctx | { error: string; 
   ]);
   if (c?.status === "suspendat") return { error: "Firma este suspendată.", status: 403 };
   if (c?.assistant_enabled === false || (st as { assistant?: boolean } | null)?.assistant === false) {
-    return { error: "Asistentul AI este oprit. Îl poți porni din Setări → Asistent AI.", status: 403 };
+    return { error: "Asistentul AI este oprit de proprietarul aplicației.", status: 403 };
   }
   return {
     sb, userId: u.user.id, companyId: m.company_id as string, tz: (c?.timezone as string) ?? "Europe/Bucharest",

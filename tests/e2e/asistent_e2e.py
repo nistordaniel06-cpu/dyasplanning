@@ -49,9 +49,18 @@ with sync_playwright() as p:
     expect(a.get_by_text(re.compile("Mâine lucrează: .*Ion Pop la Vila Otopeni"))).to_be_visible()
     ok("răspunde la întrebări din datele firmei")
 
-    # 4) adminul oprește asistentul din Setări
-    a.goto(B + "/setari"); a.get_by_label("Asistentul AI este pornit").uncheck()
-    expect(a.get_by_text("Asistentul AI a fost oprit.")).to_be_visible()
+    # 4) doar proprietarul oprește asistentul (aici: doar pentru această firmă)
+    a.goto(B + "/setari"); expect(a.get_by_text("Asistentul AI este pornit")).to_have_count(0)
+    sql("insert into auth.users(id, email, encrypted_password, email_confirmed_at) values (gen_random_uuid(), 'sef5@dyas.ro', extensions.crypt('Bucur3st!', extensions.gen_salt('bf')), now()) on conflict do nothing")
+    sql("insert into platform_owners(user_id) select id from auth.users where email='sef5@dyas.ro' on conflict do nothing")
+    oc = b.new_context(viewport={"width": 1280, "height": 900}, locale="ro-RO"); o = oc.new_page(); o.set_default_timeout(20000)
+    o.add_init_script("try{localStorage.setItem('dyas.loc','no:'+Date.now());localStorage.setItem('dyas.push','no:'+Date.now())}catch(e){}")
+    o.goto(B + "/login"); o.get_by_label("Număr de telefon").fill("sef5@dyas.ro"); o.get_by_label("Parolă").fill("Bucur3st!")
+    o.get_by_role("button", name="Intră în aplicație").click(); o.wait_for_url(re.compile("/proprietar"))
+    o.get_by_role("tab", name="Firme").click(); o.locator("main").get_by_role("button").filter(has_text="Construct Test SRL").first.click()
+    o.get_by_label("Asistent AI pornit pentru această firmă").uncheck(); o.wait_for_timeout(1500)
+    assert sql("select assistant_enabled from companies where name='Construct Test SRL'") == "f"
+    ok("proprietarul oprește asistentul pentru o firmă din panoul lui")
     a.goto(B + "/asistent"); expect(a.get_by_text("Asistentul AI este oprit")).to_be_visible()
     st = a.evaluate("""async () => { const parts = document.cookie.split('; ').filter((c) => /^sb-.*-auth-token/.test(c)).sort().map((c) => decodeURIComponent(c.split('=').slice(1).join('=')));
       let raw = parts.join(''); if (raw.startsWith('base64-')) raw = atob(raw.slice(7).replace(/-/g, '+').replace(/_/g, '/'));
@@ -59,7 +68,7 @@ with sync_playwright() as p:
       const r = await fetch('/api/asistent', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + t }, body: JSON.stringify({ messages: [{ role: 'user', content: 'salut' }] }) }); return r.status; }""")
     assert st == 403, st
     a.goto(B + "/dashboard"); expect(a.get_by_role("link", name="Asistent AI")).to_have_count(0)
-    ok("adminul poate opri asistentul: dispare din meniu, serverul refuză cererile")
+    ok("oprit de proprietar: dispare din meniul adminului, serverul refuză cererile")
     d = b.new_context(viewport={"width": 1280, "height": 800}, locale="ro-RO"); dp = d.new_page()
     dp.add_init_script("try{localStorage.setItem('dyas.loc','no:'+Date.now());localStorage.setItem('dyas.push','no:'+Date.now())}catch(e){}")
     dp.goto(B + "/login"); dp.get_by_label("Număr de telefon").fill("patron@firma.ro"); dp.get_by_label("Parolă").fill("parola1234")

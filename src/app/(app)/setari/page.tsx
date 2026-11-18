@@ -1,6 +1,5 @@
 "use client";
 import { BackupCard } from "@/components/BackupCard";
-import { useAppStatus } from "@/components/AppExtras";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { RequireRole } from "@/components/shell";
@@ -31,8 +30,6 @@ function Setari() {
   const [wEnd, setWEnd] = useState(defSched.end);
   const [wBreak, setWBreak] = useState(String(defSched.breakMin));
   const [busy, setBusy] = useState(false);
-  const globalOff = useAppStatus()?.assistant === false;
-  const [aiOn, setAiOn] = useState(company?.assistant_enabled !== false);
   const [msg, setMsg] = useState<{ tone: "green" | "red"; text: string } | null>(null);
   const [teamName, setTeamName] = useState("");
 
@@ -94,23 +91,6 @@ function Setari() {
           </Field>
         </div>
         <Button className="mt-4" variant="primary" onClick={saveCompany} loading={busy} disabled={!name.trim()}>Salvează</Button>
-      </Card>
-
-      <Card title="Asistent AI">
-        <p className="mb-3 text-sm text-slate-600">Asistentul creează lucrări, angajați, mașini și programul din ce îi scrii sau dictezi, după ce confirmi. Îl vede doar administratorul.</p>
-        {globalOff
-          ? <Notice tone="amber">Asistentul AI este oprit pentru toată aplicația de către proprietarul ei.</Notice>
-          : (
-            <label className="flex items-center gap-3 text-sm font-medium">
-              <input type="checkbox" className="h-5 w-5 accent-orange-600" checked={aiOn} disabled={busy}
-                onChange={async (e) => {
-                  const v = e.target.checked; setAiOn(v);
-                  if (await run(() => supabase().from("companies").update({ assistant_enabled: v }).eq("id", company!.id), v ? "Asistentul AI a fost pornit." : "Asistentul AI a fost oprit.")) await reload();
-                  else setAiOn(!v);
-                }} />
-              Asistentul AI este pornit
-            </label>
-          )}
       </Card>
 
       <Card title="Programul de lucru implicit">

@@ -60,7 +60,7 @@ export default function AsistentPage() {
   if (!enabled) return (
     <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-700">
       <div className="mb-1 flex items-center gap-2 text-lg font-bold"><Sparkles className="h-5 w-5 text-slate-400" />Asistentul AI este oprit</div>
-      Îl poți porni din <Link href="/setari" className="font-semibold text-orange-700 underline">Setări → Asistent AI</Link>.
+      A fost oprit de proprietarul aplicației. Dacă vrei să-l folosești, scrie-ne din <Link href="/ajutor" className="font-semibold text-orange-700 underline">Ajutor</Link>.
     </div>
   );
 

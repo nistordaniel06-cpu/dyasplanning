@@ -5,10 +5,9 @@ set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 select tst.expect_error('select owner_set_assistant(false)', 'doar proprietarului');
 select tst.assert((app_status()->>'assistant')::boolean, 'implicit pornit');
--- adminul îl oprește pentru firma lui
+-- adminul NU îl poate schimba (doar proprietarul)
 update companies set assistant_enabled = false where id = tst.id('c1');
-select tst.assert(not (select assistant_enabled from companies where id = tst.id('c1')), 'adminul îl poate opri');
-update companies set assistant_enabled = true where id = tst.id('c1');
+select tst.assert((select assistant_enabled from companies where id = tst.id('c1')), 'adminul nu poate opri asistentul');
 -- proprietarul: global și pe firmă
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f0', false);
 select owner_set_assistant(false);

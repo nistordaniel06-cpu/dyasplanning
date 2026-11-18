@@ -567,7 +567,7 @@ function PlatformTab() {
     <div className="space-y-4">
       <MaintenanceCard />
       <Card title="Asistent AI">
-        <p className="mb-3 text-sm text-slate-600">Asistentul AI al administratorilor de firmă. Oprit aici = oprit pentru toate firmele. Îl poți opri și doar pentru o firmă, din detaliile ei (tab-ul Firme).</p>
+        <p className="mb-3 text-sm text-slate-600">Asistentul AI al administratorilor de firmă. Doar tu (proprietarii) îl poți porni sau opri. Oprit aici = oprit pentru toate firmele; îl poți opri și doar pentru o firmă, din detaliile ei (tab-ul Firme).</p>
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" className="h-5 w-5 accent-orange-600" checked={q.data?.assistant_enabled !== false} disabled={busy || !q.data}
             onChange={async (e) => {
