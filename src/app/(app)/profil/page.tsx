@@ -45,7 +45,7 @@ export default function ProfilPage() {
             <dt className="text-slate-500">Telefon</dt><dd>{employee.phone ?? "—"}</dd>
             <dt className="text-slate-500">Echipă</dt><dd>{team?.name ?? "—"}</dd>
             <dt className="text-slate-500">Program obișnuit</dt>
-            <dd>{employee.work_start.slice(0, 5)}–{employee.work_end.slice(0, 5)}, {[...employee.work_days].sort().map((d) => WEEKDAY_SHORT[d]).join(", ")}</dd>
+            <dd>{employee.work_start.slice(0, 5)}–{employee.work_end.slice(0, 5)} · pauză {employee.break_minutes ?? 60} min, {[...employee.work_days].sort().map((d) => WEEKDAY_SHORT[d]).join(", ")}</dd>
             {employee.skills.length > 0 && <><dt className="text-slate-500">Competențe</dt><dd>{employee.skills.join(", ")}</dd></>}
           </>}
         </dl>

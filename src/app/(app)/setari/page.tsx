@@ -4,6 +4,8 @@ import { Trash2 } from "lucide-react";
 import { RequireRole } from "@/components/shell";
 import { Badge, Button, Card, ErrorBox, Field, Input, Loading, Notice, PageHeader, Select } from "@/components/ui";
 import { useSession } from "@/lib/session";
+import { companySchedule, scheduleMinutes } from "@/lib/schedule";
+import { formatMinutes } from "@/lib/hours";
 import { useQuery, must } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
@@ -22,6 +24,10 @@ function Setari() {
   const [name, setName] = useState(company?.name ?? "");
   const [timezone, setTimezone] = useState(company?.timezone ?? "Europe/Bucharest");
   const [buffer, setBuffer] = useState(String(company?.travel_buffer_minutes ?? 30));
+  const defSched = companySchedule(company);
+  const [wStart, setWStart] = useState(defSched.start);
+  const [wEnd, setWEnd] = useState(defSched.end);
+  const [wBreak, setWBreak] = useState(String(defSched.breakMin));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "green" | "red"; text: string } | null>(null);
   const [teamName, setTeamName] = useState("");
@@ -50,6 +56,19 @@ function Setari() {
     if (ok) await reload();
   }
 
+  async function saveSchedule(applyAll: boolean) {
+    const br = Math.min(240, Math.max(0, Number(wBreak) || 0));
+    const ok = await run(() => supabase().from("companies").update({ default_work_start: wStart, default_work_end: wEnd, default_break_minutes: br }).eq("id", company!.id), "Programul implicit a fost salvat.");
+    if (!ok) return;
+    if (applyAll) {
+      if (!window.confirm("Aplici acest program tuturor angajaților activi? Programele personalizate se vor înlocui.")) { await reload(); return; }
+      const { data, error } = await supabase().rpc("apply_default_schedule_to_all");
+      if (error) setMsg({ tone: "red", text: humanError(error) });
+      else setMsg({ tone: "green", text: `Program aplicat la ${data} angajați.` });
+    }
+    await reload();
+  }
+
   const d = q.data;
   const empName = (id: string | null) => d?.employees.find((e) => e.id === id)?.full_name ?? "—";
 
@@ -70,6 +89,20 @@ function Setari() {
           </Field>
         </div>
         <Button className="mt-4" variant="primary" onClick={saveCompany} loading={busy} disabled={!name.trim()}>Salvează</Button>
+      </Card>
+
+      <Card title="Programul de lucru implicit">
+        <p className="mb-3 text-sm text-slate-600">Se completează automat la angajații noi, în planning și la pontaj. Fiecare angajat poate avea programul lui (din fișa angajatului → Modifică).</p>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="De la"><Input type="time" value={wStart} onChange={(e) => setWStart(e.target.value)} /></Field>
+          <Field label="Până la"><Input type="time" value={wEnd} onChange={(e) => setWEnd(e.target.value)} /></Field>
+          <Field label="Pauză (min)"><Input type="number" min={0} max={240} step={5} inputMode="numeric" value={wBreak} onChange={(e) => setWBreak(e.target.value)} /></Field>
+        </div>
+        <p className="mt-2 text-sm font-medium text-slate-800">= {formatMinutes(scheduleMinutes({ start: wStart, end: wEnd, breakMin: Number(wBreak) || 0 }))} lucrate pe zi</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button variant="primary" onClick={() => saveSchedule(false)} loading={busy}>Salvează programul</Button>
+          <Button onClick={() => saveSchedule(true)} disabled={busy}>Salvează și aplică tuturor angajaților</Button>
+        </div>
       </Card>
 
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}

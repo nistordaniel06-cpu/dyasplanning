@@ -943,6 +943,18 @@
 "aprobate": "approved",
 ". Orele trimise și ciornele sunt afișate separat și nu sunt incluse în coloana „Aprobate”. Pontajele respinse nu se adună.": ". Submitted hours and drafts are shown separately and are not included in the “Approved” column. Rejected timesheets are not added up.",
 "Toată firma": "Whole company",
+"Program — de la": "Schedule — from",
+"Programul de lucru implicit": "Default working hours",
+"Se completează automat la angajații noi, în planning și la pontaj. Fiecare angajat poate avea programul lui (din fișa angajatului → Modifică).": "Filled in automatically for new employees, in planning and in timesheets. Each employee can have their own schedule (employee page → Edit).",
+"lucrate pe zi": "worked per day",
+"lucrate pe zi. Programul acesta se completează automat în planning și la pontaj.": "worked per day. This schedule is filled in automatically in planning and timesheets.",
+"Salvează programul": "Save schedule",
+"Salvează și aplică tuturor angajaților": "Save and apply to all employees",
+"Programul implicit a fost salvat.": "The default schedule was saved.",
+"pauză": "break",
+"/ zi,": "/ day,",
+"Aplici acest program tuturor angajaților activi? Programele personalizate se vor înlocui.": "Apply this schedule to all active employees? Custom schedules will be replaced.",
+"Doar administratorul poate schimba programul angajaților.": "Only the administrator can change employees' schedules.",
 "Pornește notificările": "Turn on notifications",
 "Mai târziu": "Later",
 "Activează": "Turn on",
@@ -1349,6 +1361,10 @@
 [
 "^(\\d+) conectări$",
 "$1 sign-ins"
+],
+[
+"^Program aplicat la (\\d+) angajați\\.$",
+"Schedule applied to $1 employees."
 ],
 [
 "^Elimină: (.+)$",

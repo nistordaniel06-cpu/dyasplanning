@@ -5,6 +5,7 @@ import { useSession } from "@/lib/session";
 import { humanError } from "@/lib/errors";
 import { formatMinutes, validateShift } from "@/lib/hours";
 import { localDate, localTime, shiftFromLocal, todayIn } from "@/lib/time";
+import { employeeSchedule } from "@/lib/schedule";
 import type { Assignment, Employee, Project, Task, TimeEntry, TimeEntryStatus } from "@/lib/types";
 import { Button, ErrorBox, Field, Input, Modal, Notice, Select, Textarea } from "./ui";
 
@@ -38,9 +39,11 @@ export function TimeEntryForm({ entry, prefill, employees, projects, tasks, assi
   const [projectId, setProjectId] = useState(entry?.project_id ?? prefill?.projectId ?? "");
   const [taskId, setTaskId] = useState(entry?.task_id ?? prefill?.taskId ?? "");
   const [date, setDate] = useState(entry ? localDate(entry.started_at, tz) : prefill?.date ?? todayIn(tz));
-  const [start, setStart] = useState(entry ? localTime(entry.started_at, tz) : prefill?.start ?? "08:00");
-  const [end, setEnd] = useState(entry ? localTime(entry.ended_at, tz) : prefill?.end ?? "16:00");
-  const [breakMin, setBreakMin] = useState(String(entry?.break_minutes ?? prefill?.breakMin ?? 30));
+  // implicit: programul angajatului (07:00–16:00, pauză 60 min = 8 ore, dacă nu s-a setat altul)
+  const sched = employeeSchedule(employees.find((x) => x.id === (entry?.employee_id ?? prefill?.employeeId ?? employee?.id)) ?? employee, company);
+  const [start, setStart] = useState(entry ? localTime(entry.started_at, tz) : prefill?.start ?? sched.start);
+  const [end, setEnd] = useState(entry ? localTime(entry.ended_at, tz) : prefill?.end ?? sched.end);
+  const [breakMin, setBreakMin] = useState(String(entry?.break_minutes ?? prefill?.breakMin ?? sched.breakMin));
   const [notes, setNotes] = useState(entry?.notes ?? "");
   const [busy, setBusy] = useState<TimeEntryStatus | null>(null);
   const [error, setError] = useState<string | null>(null);

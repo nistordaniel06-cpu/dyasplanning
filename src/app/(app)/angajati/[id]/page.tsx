@@ -15,6 +15,7 @@ import { ABSENCE_TYPE, ROLE_LABEL } from "@/lib/labels";
 import { whatsappLink } from "@/lib/phone";
 import { getLang } from "@/lib/lang";
 import { formatMinutes } from "@/lib/hours";
+import { employeeSchedule, scheduleMinutes } from "@/lib/schedule";
 import { plannedMinutes } from "@/lib/reports";
 import { addDays, endOfMonth, inRange, localDate, localTime, rangeUtc, shortDate, startOfMonth, startOfWeek, todayIn, WEEKDAY_SHORT } from "@/lib/time";
 import type { Absence, AbsenceType, AppRole, Assignment, Employee, Invite, TimeEntry } from "@/lib/types";
@@ -117,7 +118,7 @@ function Angajat() {
         <Card title="Profil">
           <dl className="space-y-1.5 text-sm">
             <div><span className="text-slate-500">Telefon: </span>{e.phone ? <a href={`tel:${e.phone}`} className="font-semibold text-orange-700 underline">{e.phone}</a> : "—"}</div>
-            <div><span className="text-slate-500">Program: </span>{e.work_start.slice(0, 5)}–{e.work_end.slice(0, 5)}, {[...e.work_days].sort().map((x) => WEEKDAY_SHORT[x]).join(", ")}</div>
+            <div><span className="text-slate-500">Program: </span>{e.work_start.slice(0, 5)}–{e.work_end.slice(0, 5)} · pauză {e.break_minutes ?? 60} min · {formatMinutes(scheduleMinutes(employeeSchedule(e)))} / zi, {[...e.work_days].sort().map((x) => WEEKDAY_SHORT[x]).join(", ")}</div>
             <div><span className="text-slate-500">Competențe: </span>{e.skills.length ? e.skills.join(", ") : "—"}</div>
           </dl>
           {d.invites.length > 0 && (

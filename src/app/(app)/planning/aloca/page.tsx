@@ -7,6 +7,7 @@ import { RequireRole } from "@/components/shell";
 import { ConflictList } from "@/components/AssignmentEditor";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Notice, PageHeader, Select, cx } from "@/components/ui";
 import { useSession } from "@/lib/session";
+import { companySchedule, employeeSchedule } from "@/lib/schedule";
 import { useQuery } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
@@ -34,9 +35,12 @@ function Aloca() {
   const [selected, setSelected] = useState<string[]>([]);
   const [empSearch, setEmpSearch] = useState("");
   const [date, setDate] = useState(params.get("date") ?? todayIn(tz));
-  const [start, setStart] = useState("08:00");
-  const [end, setEnd] = useState("16:00");
-  const [breakMin, setBreakMin] = useState("30");
+  const def = companySchedule(company);
+  const [start, setStart] = useState(def.start);
+  const [end, setEnd] = useState(def.end);
+  const [breakMin, setBreakMin] = useState(String(def.breakMin));
+  // cât timp adminul nu schimbă orele comune, fiecare angajat primește programul lui
+  const [commonTouched, setCommonTouched] = useState(false);
   const [repeat, setRepeat] = useState(false);
   const [until, setUntil] = useState(addDays(params.get("date") ?? todayIn(tz), 4));
   const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
@@ -71,7 +75,14 @@ function Aloca() {
   const tasks = [...(d?.tasks ?? []), ...extraTasks].filter((t) => t.project_id === projectId);
   const empName = (id: string) => d?.employees.find((e) => e.id === id)?.full_name ?? "";
 
-  const settingsFor = (eid: string): PerEmployee => custom[eid] ?? { taskId, start, end, breakMin };
+  const settingsFor = (eid: string): PerEmployee => {
+    if (custom[eid]) return custom[eid];
+    if (!commonTouched) {
+      const sc = employeeSchedule(d?.employees.find((e) => e.id === eid), company);
+      return { taskId, start: sc.start, end: sc.end, breakMin: String(sc.breakMin) };
+    }
+    return { taskId, start, end, breakMin };
+  };
 
   const slots = useMemo(() => {
     const out: (Slot & { date: string; per: PerEmployee; valid: ReturnType<typeof validateShift> })[] = [];
@@ -89,7 +100,7 @@ function Aloca() {
       }
     }
     return out;
-  }, [dates, selected, custom, taskId, start, end, breakMin, projectId, tz]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dates, selected, custom, taskId, start, end, breakMin, projectId, tz, commonTouched, d]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const conflicts = useMemo(() => {
     if (!sched.data || !d) return [];
@@ -263,9 +274,9 @@ function Aloca() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <Field label="Ziua" className="col-span-2 sm:col-span-1"><Input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} /></Field>
-                  <Field label="De la"><Input type="time" step={900} value={start} onChange={(e) => { setStart(e.target.value); setCustom({}); }} /></Field>
-                  <Field label="Până la"><Input type="time" step={900} value={end} onChange={(e) => { setEnd(e.target.value); setCustom({}); }} /></Field>
-                  <Field label="Pauză (min)"><Input type="number" min={0} step={5} inputMode="numeric" value={breakMin} onChange={(e) => { setBreakMin(e.target.value); setCustom({}); }} /></Field>
+                  <Field label="De la"><Input type="time" step={900} value={start} onChange={(e) => { setStart(e.target.value); setCustom({}); setCommonTouched(true); }} /></Field>
+                  <Field label="Până la"><Input type="time" step={900} value={end} onChange={(e) => { setEnd(e.target.value); setCustom({}); setCommonTouched(true); }} /></Field>
+                  <Field label="Pauză (min)"><Input type="number" min={0} step={5} inputMode="numeric" value={breakMin} onChange={(e) => { setBreakMin(e.target.value); setCustom({}); setCommonTouched(true); }} /></Field>
                 </div>
                 {end <= start && <Notice tone="blue">Intervalul trece peste miezul nopții (se termină a doua zi).</Notice>}
                 <label className="flex items-center gap-3 text-sm font-medium">

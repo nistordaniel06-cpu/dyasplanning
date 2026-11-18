@@ -8,13 +8,17 @@ import type { Employee, Team, Vehicle } from "@/lib/types";
 import { Button, ErrorBox, Field, Input, Modal, Select, cx } from "./ui";
 import { PhoneInput } from "./PhoneInput";
 import { countryForTimezone, formatStored, phoneProblem, splitStored } from "@/lib/countries";
+import { companySchedule, scheduleMinutes } from "@/lib/schedule";
+import { formatMinutes } from "@/lib/hours";
 
 export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved }: { employee?: Employee | null; teams: Team[]; vehicles?: Vehicle[]; onClose: () => void; onSaved: (e: Employee) => void }) {
   const { company } = useSession();
+  const def = companySchedule(company);
   const [f, setF] = useState({
     full_name: employee?.full_name ?? "", phone: employee?.phone ?? "", trade: employee?.trade ?? "",
     skills: (employee?.skills ?? []).join(", "), team_id: employee?.team_id ?? "",
-    work_start: employee?.work_start?.slice(0, 5) ?? "08:00", work_end: employee?.work_end?.slice(0, 5) ?? "16:00",
+    work_start: employee?.work_start?.slice(0, 5) ?? def.start, work_end: employee?.work_end?.slice(0, 5) ?? def.end,
+    break_minutes: String(employee?.break_minutes ?? def.breakMin),
     work_days: employee?.work_days ?? [1, 2, 3, 4, 5], active: employee?.active ?? true,
     is_driver: employee?.is_driver ?? false, default_vehicle_id: employee?.default_vehicle_id ?? "",
   });
@@ -32,7 +36,7 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
     const payload = {
       full_name: f.full_name.trim(), phone: formatStored(country.dial, local) || null, trade: f.trade.trim() || null,
       skills: f.skills.split(",").map((s) => s.trim()).filter(Boolean), team_id: f.team_id || null,
-      work_start: f.work_start, work_end: f.work_end, work_days: [...f.work_days].sort(), active: f.active,
+      work_start: f.work_start, work_end: f.work_end, break_minutes: Math.min(240, Math.max(0, Number(f.break_minutes) || 0)), work_days: [...f.work_days].sort(), active: f.active,
       is_driver: f.is_driver, default_vehicle_id: f.is_driver && f.default_vehicle_id ? f.default_vehicle_id : null,
     };
     const sb = supabase();
@@ -62,10 +66,12 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
             {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </Select>
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Program obișnuit — de la"><Input type="time" value={f.work_start} onChange={(e) => setF({ ...f, work_start: e.target.value })} /></Field>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Program — de la"><Input type="time" value={f.work_start} onChange={(e) => setF({ ...f, work_start: e.target.value })} /></Field>
           <Field label="până la"><Input type="time" value={f.work_end} onChange={(e) => setF({ ...f, work_end: e.target.value })} /></Field>
+          <Field label="Pauză (min)"><Input type="number" min={0} max={240} step={5} inputMode="numeric" value={f.break_minutes} onChange={(e) => setF({ ...f, break_minutes: e.target.value })} /></Field>
         </div>
+        <p className="-mt-2 text-xs text-slate-500">= {formatMinutes(scheduleMinutes({ start: f.work_start, end: f.work_end, breakMin: Number(f.break_minutes) || 0 }))} lucrate pe zi. Programul acesta se completează automat în planning și la pontaj.</p>
         <Field label="Zile lucrătoare">
           <div className="flex flex-wrap gap-1.5">
             {[1, 2, 3, 4, 5, 6, 7].map((w) => (

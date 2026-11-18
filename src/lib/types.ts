@@ -10,6 +10,9 @@ export interface Company {
   name: string;
   timezone: string;
   travel_buffer_minutes: number;
+  default_work_start?: string; // "07:00:00"
+  default_work_end?: string;
+  default_break_minutes?: number;
   created_at: string;
 }
 
@@ -37,8 +40,9 @@ export interface Employee {
   skills: string[];
   team_id: string | null;
   user_id: string | null;
-  work_start: string; // "08:00:00"
+  work_start: string; // "07:00:00"
   work_end: string;
+  break_minutes?: number; // pauza zilnică (implicit 60)
   work_days: number[];
   active: boolean;
   is_driver: boolean;

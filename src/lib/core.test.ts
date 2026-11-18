@@ -188,3 +188,13 @@ describe("telefoane din orice țară", () => {
     expect(phoneProblem("31", "06 1234 5678")).toBeNull();
   });
 });
+
+import { companySchedule, employeeSchedule, scheduleMinutes } from "./schedule";
+describe("program implicit", () => {
+  it("07:00–16:00 cu 60 min pauză = 8 ore", () => {
+    expect(scheduleMinutes(companySchedule(null))).toBe(480);
+    expect(companySchedule({ default_work_start: "06:30:00", default_work_end: "15:00:00", default_break_minutes: 30 })).toEqual({ start: "06:30", end: "15:00", breakMin: 30 });
+    expect(employeeSchedule({ work_start: "08:00:00", work_end: "17:00:00", break_minutes: 45 })).toEqual({ start: "08:00", end: "17:00", breakMin: 45 });
+    expect(scheduleMinutes({ start: "22:00", end: "06:00", breakMin: 30 })).toBe(450);
+  });
+});
