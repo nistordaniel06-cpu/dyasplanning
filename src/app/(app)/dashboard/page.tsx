@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { RequireRole } from "@/components/shell";
 import { AppSetupCard } from "@/components/AppSetup";
 import { Badge, Button, Card, ErrorBox, Loading, PageHeader, Stat, StatusBadge } from "@/components/ui";
@@ -65,6 +65,7 @@ function Dashboard() {
     <div className="space-y-5">
       <PageHeader title="Dashboard" subtitle={`${company?.name} · ${prettyDate(today)}`}
         actions={<>
+          <Link href="/asistent"><Button><Sparkles className="h-4 w-4 text-orange-600" />Asistent AI</Button></Link>
           <Link href="/lucrari?nou=1"><Button><Plus className="h-4 w-4" />Adaugă lucrare</Button></Link>
           <Link href="/planning/aloca"><Button variant="primary"><Plus className="h-4 w-4" />Alocă angajați</Button></Link>
         </>} />

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
-  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, ShieldCheck, Sun, User, Users, X,
+  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, ShieldCheck, Sparkles, Sun, User, Users, X,
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
@@ -29,6 +29,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/planning", label: "Planning", icon: CalendarRange },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/lucrari", label: "Lucrări", icon: Hammer },
+  { href: "/asistent", label: "Asistent AI", icon: Sparkles },
   { href: "/angajati", label: "Angajați", icon: Users },
   { href: "/pontaje", label: "Pontaje", icon: ClipboardCheck },
   { href: "/rapoarte", label: "Rapoarte", icon: BarChart3 },
