@@ -81,10 +81,13 @@ with sync_playwright() as p:
 
     # 3) chat: poză + mesaj vocal
     i.goto(B + "/chat"); i.get_by_text("Toată firma").click()
-    i.locator("input[type=file]").set_input_files("/tmp/chat.png")
+    i.locator("input[type=file][capture]").set_input_files("/tmp/chat.png")
     img = i.locator("img[alt='Poză']").last
     expect(img).to_be_visible(); i.wait_for_function("(img) => img.complete && img.naturalWidth > 0", arg=img.element_handle())
-    ok("chat: poză trimisă și afișată")
+    ok("chat: poză făcută cu camera, trimisă și afișată")
+    i.get_by_test_id("chat-galerie").set_input_files(["/tmp/chat.png", "/tmp/lucrare.png"])
+    expect(i.locator("img[alt='Poză']")).to_have_count(3)
+    ok("chat: 2 poze încărcate din galerie deodată")
     i.get_by_role("button", name="Mesaj vocal").click()
     expect(i.get_by_text("Se înregistrează…")).to_be_visible(); i.wait_for_timeout(1500)
     i.get_by_role("button", name="Trimite").click()

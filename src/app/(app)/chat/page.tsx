@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Hammer, MessageCirclePlus, Mic, Send, Square, Trash2, Users, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Camera, ImagePlus, Hammer, MessageCirclePlus, Mic, Send, Square, Trash2, Users, User as UserIcon } from "lucide-react";
 import { compressImage, extFor, newId, signedUrls, upload } from "@/lib/media";
 import { Button, Empty, ErrorBox, Loading, Modal, PageHeader, cx } from "@/components/ui";
 import { useSession } from "@/lib/session";
@@ -102,6 +102,7 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
   const [recSecs, setRecSecs] = useState(0);
   const [viewer, setViewer] = useState<string | null>(null);
   const photoInput = useRef<HTMLInputElement>(null);
+  const galleryInput = useRef<HTMLInputElement>(null);
   const chunks = useRef<Blob[]>([]);
   const cancelRec = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,10 +152,11 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
   }
 
   async function pickPhoto(files: FileList | null) {
-    const f = files?.[0];
+    const list = Array.from(files ?? []).filter((f) => f.type.startsWith("image/")).slice(0, 10);
     if (photoInput.current) photoInput.current.value = "";
-    if (!f) return;
-    await sendAttachment(await compressImage(f), "image");
+    if (galleryInput.current) galleryInput.current.value = "";
+    // mai multe poze din galerie: câte un mesaj pentru fiecare, în ordine
+    for (const f of list) await sendAttachment(await compressImage(f), "image");
   }
 
   async function startRecording() {
@@ -265,6 +267,8 @@ function Conversation({ channelId, channel, onRead }: { channelId: string; chann
       <form onSubmit={send} className="flex items-end gap-2 border-t border-slate-200 bg-white p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <button type="button" aria-label="Fă o poză" disabled={sending} onClick={() => photoInput.current?.click()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"><Camera className="h-5 w-5" /></button>
         <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void pickPhoto(e.target.files)} />
+        <button type="button" aria-label="Încarcă poze din galerie" disabled={sending} onClick={() => galleryInput.current?.click()} className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"><ImagePlus className="h-5 w-5" /></button>
+        <input ref={galleryInput} type="file" accept="image/*" multiple hidden onChange={(e) => void pickPhoto(e.target.files)} data-testid="chat-galerie" />
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={4000} placeholder="Scrie un mesaj…"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(min-width: 768px)").matches) { e.preventDefault(); void send(e); } }}
           className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-slate-300 px-4 py-2.5 text-base focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200" />

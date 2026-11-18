@@ -180,7 +180,7 @@ exact.update({  # teren: pontaj cu buton, poze, chat vocal, fără semnal, PDF
  "Se trimit datele salvate pe telefon (": "Sending data saved on the phone (",
  "sfârșit:": "end:", "început:": "start:", "început la": "started at",
  "✓ Pontat cu butonul „Am început / Am terminat”": "✓ Clocked with “I've started / I'm done”",
- "🎤 Mesaj vocal": "🎤 Voice message", "📷 Poză": "📷 Photo",
+ "🎤 Mesaj vocal": "🎤 Voice message", "Încarcă poze din galerie": "Upload photos from gallery", "📷 Poză": "📷 Photo",
 })
 P += [
  (r"^Se trimit datele salvate pe telefon \((\d+)\)\.$", "Sending data saved on the phone ($1)."),
