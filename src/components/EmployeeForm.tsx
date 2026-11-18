@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useSession } from "@/lib/session";
 import { humanError } from "@/lib/errors";
@@ -21,7 +21,14 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
     break_minutes: String(employee?.break_minutes ?? def.breakMin),
     work_days: employee?.work_days ?? [1, 2, 3, 4, 5], active: employee?.active ?? true,
     is_driver: employee?.is_driver ?? false, default_vehicle_id: employee?.default_vehicle_id ?? "",
+    home_address: "",
   });
+  // adresa de acasă stă separat (o văd doar adminii și angajatul)
+  useEffect(() => {
+    if (!employee) return;
+    void supabase().from("employee_private").select("home_address").eq("employee_id", employee.id).maybeSingle()
+      .then(({ data }) => { if (data?.home_address) setF((x) => ({ ...x, home_address: x.home_address || data.home_address })); });
+  }, [employee]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const initialPhone = splitStored(employee?.phone, countryForTimezone(company?.timezone));
@@ -43,9 +50,15 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
     const res = employee
       ? await sb.from("employees").update(payload).eq("id", employee.id).select().single()
       : await sb.from("employees").insert({ ...payload, company_id: company!.id }).select().single();
+    if (res.error) { setBusy(false); setError(humanError(res.error)); return; }
+    const saved = res.data as Employee;
+    const addr = f.home_address.trim();
+    const pr = addr || employee
+      ? await sb.from("employee_private").upsert({ employee_id: saved.id, company_id: saved.company_id, home_address: addr || null })
+      : { error: null };
     setBusy(false);
-    if (res.error) { setError(humanError(res.error)); return; }
-    onSaved(res.data as Employee);
+    if (pr.error) { setError(humanError(pr.error)); return; }
+    onSaved(saved);
   }
 
   return (
@@ -59,6 +72,9 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
           </Field>
           <Field label="Meserie"><Input value={f.trade} onChange={(e) => setF({ ...f, trade: e.target.value })} placeholder="ex. Electrician" /></Field>
         </div>
+        <Field label="Adresa de acasă" hint="Strada, numărul, localitatea. O vede doar administratorul.">
+          <Input value={f.home_address} maxLength={300} autoComplete="off" onChange={(e) => setF({ ...f, home_address: e.target.value })} placeholder="ex. Str. Lalelelor 5, Chiajna" />
+        </Field>
         <Field label="Competențe" hint="Separate prin virgulă, ex. rigips, gresie, zugrăveli"><Input value={f.skills} onChange={(e) => setF({ ...f, skills: e.target.value })} /></Field>
         <Field label="Echipă">
           <Select value={f.team_id} onChange={(e) => setF({ ...f, team_id: e.target.value })}>
@@ -82,7 +98,7 @@ export function EmployeeForm({ employee, teams, vehicles = [], onClose, onSaved 
         </Field>
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" className="h-5 w-5 accent-orange-600" checked={f.is_driver} onChange={(e) => setF({ ...f, is_driver: e.target.checked })} />
-          Șofer — introduce dimineața km de la bordul mașinii
+          Șofer — introduce km de la bordul mașinii când ajunge la muncă și când ajunge acasă
         </label>
         {f.is_driver && (
           <Field label="Mașina obișnuită" hint={vehicles.length === 0 ? "Adaugă mașini din secțiunea „Mașini”." : "Apare preselectată când șoferul introduce km."}>

@@ -126,7 +126,7 @@ describe("inRange", () => {
   });
 });
 
-import { withDistances, sumBy } from "./odometer";
+import { withDistances, sumBy, segmentLabel } from "./odometer";
 import type { OdometerReading } from "./types";
 describe("km mașini", () => {
   const r = (v: string, d: string, km: number, e = "mihai"): OdometerReading => ({ id: v + d, company_id: "c", vehicle_id: v, employee_id: e, reading_date: d, km, note: null, created_at: "" });
@@ -137,6 +137,16 @@ describe("km mașini", () => {
     expect(res.find((x) => x.vehicle_id === "car" && x.reading_date === "2026-11-17")!.distance).toBeNull();
     expect(sumBy(res, (x) => x.vehicle_id).get("car")).toBe(445);
     expect(sumBy(res, (x) => x.employee_id).get("ion")).toBe(120);
+  });
+  it("două citiri pe zi: la muncă și acasă", () => {
+    const k = (d: string, kind: "munca" | "acasa", km: number): OdometerReading => ({ ...r("car", d, km), id: d + kind, kind });
+    const res = withDistances([k("2026-11-17", "acasa", 1060), k("2026-11-17", "munca", 1000), k("2026-11-18", "munca", 1085), k("2026-11-18", "acasa", 1140)]);
+    const get = (d: string, kind: string) => res.find((x) => x.reading_date === d && x.kind === kind)!;
+    expect(get("2026-11-17", "munca")).toMatchObject({ distance: 60, nextKind: "acasa", spanDays: 0 });
+    expect(segmentLabel(get("2026-11-17", "munca"))).toBe("muncă → acasă");
+    expect(get("2026-11-17", "acasa")).toMatchObject({ distance: 25, nextKind: "munca", spanDays: 1 });
+    expect(segmentLabel(get("2026-11-17", "acasa"))).toBe("acasă → muncă");
+    expect(res.map((x) => x.km)).toEqual([1140, 1085, 1060, 1000]);
   });
 });
 

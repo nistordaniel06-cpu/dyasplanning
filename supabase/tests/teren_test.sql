@@ -60,9 +60,9 @@ reset role;
 update employees set is_driver = true where id = :'b3emp';
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b3', false);
-select (submit_odometer(tst.id('car'), 999000, null, app_today() - 1)->>'reading_date')::date = app_today() - 1 as ok1 \gset
+select (submit_odometer(tst.id('car'), 100100, null, app_today() - 1, 'acasa')->>'reading_date')::date = app_today() - 1 as ok1 \gset
 select tst.assert(:'ok1'::boolean, 'citire offline pe ziua de ieri');
-select (submit_odometer(tst.id('car'), 999100, null, app_today() - 30)->>'reading_date')::date = app_today() as ok2 \gset
+select (submit_odometer(tst.id('car'), 100300, null, app_today() - 30, 'acasa')->>'reading_date')::date = app_today() as ok2 \gset
 select tst.assert(:'ok2'::boolean, 'dată prea veche → azi');
 reset role;
 select 'TEREN_TESTE_TRECUTE';

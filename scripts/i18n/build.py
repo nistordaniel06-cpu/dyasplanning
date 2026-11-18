@@ -124,6 +124,8 @@ P = [
  (r"^· (\d+) suspendate$", "· $1 suspended"),
  (r"^Ștergi echipa „(.+)”\? Membrii rămân fără echipă\.$", "Delete the team “$1”? Its members will have no team."),
  (r"^Fus orar invalid: (.+)$", "Invalid time zone: $1"),
+ (r"^Kilometrajul introdus \((\d+) km\) este mai mic decât citirea anterioară \((\d+) km, (.+), (ajuns acasă|ajuns la muncă)\)\. Verifică cifrele de pe bord\.$", "The mileage entered ($1 km) is lower than the previous reading ($2 km, $3). Check the dashboard digits."),
+ (r"^Kilometrajul introdus \((\d+) km\) este mai mare decât citirea următoare \((\d+) km\)\. Verifică cifrele de pe bord\.$", "The mileage entered ($1 km) is higher than the next reading ($2 km). Check the dashboard digits."),
  (r"^Kilometrajul introdus \((\d+) km\) este mai mic decât ultima citire \((\d+) km, din (.+)\)\. Verifică cifrele de pe bord\.$", "The mileage entered ($1 km) is lower than the last reading ($2 km, from $3). Check the dashboard digits."),
  # notificări din baza de date
  (r"^Pontaj nou: (.+)$", "New timesheet: $1"),
@@ -189,7 +191,21 @@ exact.update({  # teren: pontaj cu buton, poze, chat vocal, fără semnal, PDF
  "Salvat. Utilizatorii firmei văd schimbările la următoarea deschidere a aplicației.": "Saved. The company's users will see the changes the next time they open the app.",
  "Linkul aplicației nu există": "This app link doesn't exist", "Verifică linkul primit sau cere unul nou administratorului.": "Check the link you received or ask the administrator for a new one.",
  "Mergi la autentificare": "Go to sign-in", "📷 Poză": "📷 Photo",
- "Cu telefon": "With phone", "Cu email": "With email", "Pentru administratori.": "For administrators.", "Firmă nouă": "New company", "Numele administratorului": "Administrator name", "Email administrator": "Administrator email",
+ "Cu telefon": "With phone", "Cu email": "With email", "Pentru administratori.": "For administrators.", "Adresa de acasă": "Home address", "Adresa de acasă:": "Home address:", "Ajuns acasă": "Arrived home", "Ajuns la muncă": "Arrived at work",
+ "Am ajuns acasă": "I'm home", "Am ajuns la muncă": "I'm at work", "Km mașină": "Car km", "Moment": "Moment", "Drum": "Trip", "Locul citirii": "Where the reading was taken",
+ "Când ajungi acasă, scrie kilometrii de pe bord.": "When you get home, enter the km from the dashboard.",
+ "Când ajungi la lucrare, scrie kilometrii de pe bord.": "When you get to the job, enter the km from the dashboard.",
+ "Adaugă mașinile firmei, apoi marchează șoferii din fișa angajatului („Șofer”). Ei vor introduce km din bord când ajung la muncă și când ajung acasă, din ecranul „Astăzi”.": "Add the company's cars, then mark the drivers on the employee page (“Driver”). They will enter the dashboard km when they arrive at work and when they get home, from the “Today” screen.",
+ "Există deja o citire pentru această mașină în ziua și momentul alese. Modific-o pe aceea.": "There's already a reading for this car on the chosen day and moment. Edit that one.",
+ "Strada, numărul, localitatea. O vede doar administratorul.": "Street, number, town. Only the administrator can see it.",
+ "acasă → muncă": "home → work", "acasă → muncă:": "home → work:", "muncă → acasă": "work → home", "muncă → acasă:": "work → home:",
+ "de la muncă până acasă.": "from work to home.", "de pe o zi pe alta": "day to day", "după următoarea citire": "after the next reading",
+ "ex. Str. Lalelelor 5, Chiajna": "e.g. 5 Tulip St, Chiajna", "nescris încă": "not entered yet", "în așteptare": "pending",
+ "ultima citire se calculează după următoarea": "the last reading is calculated after the next one",
+ "Șofer — introduce km de la bordul mașinii când ajunge la muncă și când ajunge acasă": "Driver — enters the dashboard km when arriving at work and when getting home",
+ "Șoferul scrie km de pe bord când ajunge la muncă și când ajunge acasă. Km parcurși = citirea următoare − citirea curentă: „muncă → acasă” e ziua de lucru plus drumul spre casă, „acasă → muncă” e drumul de dimineață.": "The driver enters the dashboard km on arriving at work and on getting home. Km driven = next reading − current reading: “work → home” is the working day plus the drive home, “home → work” is the morning drive.",
+ "Azi:": "Today:",
+ "Firmă nouă": "New company", "Numele administratorului": "Administrator name", "Email administrator": "Administrator email",
  "Cu acest email intră în aplicație.": "They sign in to the app with this email.", "Minim 8 caractere. O poate schimba după prima intrare.": "At least 8 characters. They can change it after the first sign-in.",
  "Creează firma": "Create company", "Firma a fost creată. Administratorul poate intra imediat cu emailul și parola de mai jos.": "The company was created. The administrator can sign in right away with the email and password below.",
  "Copiază datele": "Copy details", "Ascunde parola": "Hide password", "Arată parola": "Show password", "Parolă nouă": "New password",
@@ -199,6 +215,8 @@ exact.update({  # teren: pontaj cu buton, poze, chat vocal, fără semnal, PDF
  "Adresa de email nu e validă.": "The email address is not valid.", "Scrie numele firmei.": "Enter the company name.", "Scrie numele administratorului.": "Enter the administrator's name.",
 })
 P += [
+ (r"^Km ajuns acasă: (.+)$", "Km arrived home: $1"),
+ (r"^Km ajuns la muncă: (.+)$", "Km arrived at work: $1"),
  (r"^Există deja un cont cu emailul (.+)\.$", "An account with the email $1 already exists."),
  (r"^Culoare (#[0-9a-f]{6})$", "Colour $1"),
  (r"^Se trimit datele salvate pe telefon \((\d+)\)\.$", "Sending data saved on the phone ($1)."),
@@ -209,6 +227,7 @@ for r, _ in P: re.compile(r)
 G = [  # înlocuiri în interiorul textului
  [r"\b(Lun|Mar|Mie|Joi|Vin|Sâm|Dum)(?= \d\d\.\d\d)", {"Lun": "Mon", "Mar": "Tue", "Mie": "Wed", "Joi": "Thu", "Vin": "Fri", "Sâm": "Sat", "Dum": "Sun"}],
  [r"km de la ultima citire", {"km de la ultima citire": "km since the last reading"}],
+ [r"km de la citirea anterioară", {"km de la citirea anterioară": "km since the previous reading"}],
 ]
 json.dump({"exact": exact, "patterns": P, "inline": G}, open('../../public/i18n-en.json', 'w'), ensure_ascii=False, indent=0)
 missing = [s for s in (json.load(open('strings.json')) if os.path.exists('strings.json') else []) if s not in exact]

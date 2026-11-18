@@ -1,11 +1,28 @@
 import { localeTag } from "@/lib/lang";
-import type { OdometerReading } from "./types";
+import type { OdometerKind, OdometerReading } from "./types";
+
+export const KIND_LABEL: Record<OdometerKind, string> = { munca: "Ajuns la muncă", acasa: "Ajuns acasă" };
+const kindOf = (r: OdometerReading): OdometerKind => r.kind ?? "munca";
+/** Ordinea în timp: zi, apoi „la muncă” înainte de „acasă”. */
+export const readingOrder = (a: OdometerReading, b: OdometerReading) =>
+  a.reading_date.localeCompare(b.reading_date) || (kindOf(a) === kindOf(b) ? 0 : kindOf(a) === "munca" ? -1 : 1);
+
+/** Ce acoperă km de la o citire la următoarea. */
+export function segmentLabel(r: { kind?: OdometerKind; nextKind?: OdometerKind | null; spanDays?: number | null }): string {
+  if (!r.nextKind) return "";
+  const from = r.kind ?? "munca";
+  if (from === "munca" && r.nextKind === "acasa" && r.spanDays === 0) return "muncă → acasă";
+  if (from === "acasa" && r.nextKind === "munca" && r.spanDays === 1) return "acasă → muncă";
+  if (from === "munca" && r.nextKind === "munca" && r.spanDays === 1) return "de pe o zi pe alta";
+  return r.spanDays && r.spanDays > 1 ? `${r.spanDays} zile` : "";
+}
 import { diffDays } from "./time";
 
 export interface ReadingWithDistance extends OdometerReading {
   /** km parcurși de la această citire până la următoarea (null = încă nu există citirea următoare) */
   distance: number | null;
   nextDate: string | null;
+  nextKind: OdometerKind | null;
   /** câte zile acoperă diferența (1 = de pe o zi pe alta) */
   spanDays: number | null;
 }
@@ -20,18 +37,19 @@ export function withDistances(readings: OdometerReading[]): ReadingWithDistance[
   for (const r of readings) byVehicle.set(r.vehicle_id, [...(byVehicle.get(r.vehicle_id) ?? []), r]);
   const out: ReadingWithDistance[] = [];
   for (const list of byVehicle.values()) {
-    list.sort((a, b) => a.reading_date.localeCompare(b.reading_date));
+    list.sort(readingOrder);
     list.forEach((r, i) => {
       const next = list[i + 1];
       out.push({
         ...r,
         distance: next ? next.km - r.km : null,
         nextDate: next?.reading_date ?? null,
+        nextKind: next ? kindOf(next) : null,
         spanDays: next ? diffDays(next.reading_date, r.reading_date) : null,
       });
     });
   }
-  return out.sort((a, b) => b.reading_date.localeCompare(a.reading_date) || a.vehicle_id.localeCompare(b.vehicle_id));
+  return out.sort((a, b) => -readingOrder(a, b) || a.vehicle_id.localeCompare(b.vehicle_id));
 }
 
 export function sumBy<T>(rows: ReadingWithDistance[], key: (r: ReadingWithDistance) => T): Map<T, number> {

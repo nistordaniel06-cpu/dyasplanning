@@ -41,17 +41,19 @@ function Angajat() {
     const monthStart = startOfMonth(today) < startOfWeek(today) ? startOfMonth(today) : startOfWeek(today);
     const [f] = rangeUtc(monthStart, today, tz);
     const [, t] = rangeUtc(today, addDays(today, 30), tz);
-    const [emp, absences, assignments, entries, invites, teams, projects, tasks, vehicles] = await Promise.all([
+    const [emp, absences, assignments, entries, invites, teams, projects, tasks, vehicles, priv] = await Promise.all([
       sb.from("employees").select("*").eq("id", id).maybeSingle(),
       sb.from("absences").select("*").eq("employee_id", id).gte("end_date", addDays(today, -90)).order("start_date"),
       sb.from("assignments").select("*").eq("employee_id", id).gte("starts_at", f).lt("starts_at", t).order("starts_at"),
       sb.from("time_entries").select("*").eq("employee_id", id).gte("started_at", f).order("started_at", { ascending: false }),
       sb.from("invites").select("*").eq("employee_id", id).is("used_at", null).order("created_at", { ascending: false }),
       loadTeams(), loadProjects(), loadTasks(), loadVehicles(),
+      sb.from("employee_private").select("home_address").eq("employee_id", id).maybeSingle(),
     ]);
     return {
       employee: must(emp) as Employee | null, absences: must(absences) as Absence[], assignments: must(assignments) as Assignment[],
       entries: must(entries) as TimeEntry[], invites: must(invites) as Invite[], teams, projects, tasks, vehicles,
+      homeAddress: (priv.data?.home_address as string | null | undefined) ?? null,
     };
   }, [id, today, tz]);
 
@@ -120,6 +122,9 @@ function Angajat() {
         <Card title="Profil">
           <dl className="space-y-1.5 text-sm">
             <div><span className="text-slate-500">Telefon: </span>{e.phone ? <a href={`tel:${e.phone}`} className="font-semibold text-orange-700 underline">{e.phone}</a> : "—"}</div>
+            <div><span className="text-slate-500">Adresa de acasă: </span>{d.homeAddress
+              ? <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.homeAddress)}`} target="_blank" rel="noreferrer" className="font-semibold text-orange-700 underline" data-no-i18n>{d.homeAddress}</a>
+              : "—"}</div>
             <div><span className="text-slate-500">Program: </span>{e.work_start.slice(0, 5)}–{e.work_end.slice(0, 5)} · pauză {e.break_minutes ?? 60} min · {formatMinutes(scheduleMinutes(employeeSchedule(e)))} / zi, {[...e.work_days].sort().map((x) => WEEKDAY_SHORT[x]).join(", ")}</div>
             <div><span className="text-slate-500">Competențe: </span>{e.skills.length ? e.skills.join(", ") : "—"}</div>
           </dl>

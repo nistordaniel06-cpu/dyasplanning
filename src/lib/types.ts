@@ -68,10 +68,16 @@ export interface OdometerReading {
   vehicle_id: string;
   employee_id: string | null;
   reading_date: string;
+  /** „munca” = la sosirea la muncă, „acasa” = la sosirea acasă */
+  kind?: OdometerKind;
   km: number;
   note: string | null;
   created_at: string;
+  recorded_at?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 }
+export type OdometerKind = "munca" | "acasa";
 
 export interface Absence {
   id: string;

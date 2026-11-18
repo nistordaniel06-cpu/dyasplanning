@@ -26,7 +26,7 @@ select accept_invite(:'inv_code');
 select tst.assert((select count(*) from vehicles) = 2, 'șoferul vede lista de mașini');
 select tst.assert((select count(*) from odometer_readings) = 0, 'șoferul NU vede citirile de km (doar adminul)');
 select tst.expect_error($$insert into odometer_readings(company_id, vehicle_id, reading_date, km) values (tst.id('c1'), tst.id('car'), current_date, 1)$$, 'row-level security');
-select tst.expect_error($$select submit_odometer(tst.id('car'), 99999)$$, 'mai mic decât ultima citire');
+select tst.expect_error($$select submit_odometer(tst.id('car'), 99999)$$, 'mai mic decât citirea anterioară');
 select submit_odometer(tst.id('car'), 100250, 'plecare 07:10');
 select tst.assert((select km from my_odometer_today()) = 100250, 'șoferul își vede confirmarea de azi');
 select submit_odometer(tst.id('car'), 100245);

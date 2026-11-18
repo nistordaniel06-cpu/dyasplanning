@@ -1,7 +1,7 @@
 "use client";
 import { localeTag } from "@/lib/lang";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Download, Pencil, Plus } from "lucide-react";
+import { AlertTriangle, Briefcase, Download, Home, MapPin, Pencil, Plus } from "lucide-react";
 import { RequireRole } from "@/components/shell";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, Tabs, Textarea } from "@/components/ui";
 import { PeriodPicker, presetRange, type Preset } from "@/components/PeriodPicker";
@@ -10,10 +10,10 @@ import { useQuery } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
 import { byId, loadEmployees, loadOdometer, loadVehicles } from "@/lib/data";
-import { formatKm, sumBy, withDistances, type ReadingWithDistance } from "@/lib/odometer";
+import { KIND_LABEL, formatKm, segmentLabel, sumBy, withDistances, type ReadingWithDistance } from "@/lib/odometer";
 import { downloadText, toCsv } from "@/lib/reports";
 import { addDays, shortDate, todayIn } from "@/lib/time";
-import type { Employee, OdometerReading, Vehicle } from "@/lib/types";
+import type { Employee, OdometerKind, OdometerReading, Vehicle } from "@/lib/types";
 
 export default function MasiniPage() {
   return <RequireRole roles={["admin"]}><Masini /></RequireRole>;
@@ -48,15 +48,16 @@ function Masini() {
   const byVehicle = sumBy(rows, (r) => r.vehicle_id);
   const byDriver = sumBy(rows, (r) => r.employee_id ?? "");
   const total = [...byVehicle.values()].reduce((a, b) => a + b, 0);
+  const bySegment = sumBy(rows, (r) => segmentLabel(r));
   const missingToday = (d?.vehicles ?? []).filter((v) => v.active && !d!.todayReadings.some((r) => r.vehicle_id === v.id));
   const drivers = (d?.employees ?? []).filter((e) => e.is_driver);
 
   function exportCsv() {
     const csv = toCsv(
-      ["Data", "Mașina", "Nr. înmatriculare", "Șofer", "Km bord", "Km parcurși", "Până la citirea din", "Observații"],
+      ["Data", "Moment", "Mașina", "Nr. înmatriculare", "Șofer", "Km bord", "Km parcurși", "Drum", "Până la citirea din", "Observații"],
       [...rows].reverse().map((r) => [
-        r.reading_date, vehicles.get(r.vehicle_id)?.name ?? "", vehicles.get(r.vehicle_id)?.plate ?? "",
-        r.employee_id ? employees.get(r.employee_id)?.full_name ?? "" : "", r.km, r.distance ?? "", r.nextDate ?? "", r.note ?? "",
+        r.reading_date, KIND_LABEL[r.kind ?? "munca"], vehicles.get(r.vehicle_id)?.name ?? "", vehicles.get(r.vehicle_id)?.plate ?? "",
+        r.employee_id ? employees.get(r.employee_id)?.full_name ?? "" : "", r.km, r.distance ?? "", segmentLabel(r), r.nextDate ?? "", r.note ?? "",
       ]),
     );
     downloadText(`dyasplanning_km_${from}_${to}.csv`, csv);
@@ -79,7 +80,7 @@ function Masini() {
 
       {d && d.vehicles.length === 0 && (
         <Empty title="Nu ai adăugat încă nicio mașină" action={<Button variant="primary" onClick={() => setVehicleForm({ vehicle: null })}>Adaugă mașină</Button>}>
-          Adaugă mașinile firmei, apoi marchează șoferii din fișa angajatului („Șofer”). Ei vor introduce dimineața km din bord, din ecranul „Astăzi”.
+          Adaugă mașinile firmei, apoi marchează șoferii din fișa angajatului („Șofer”). Ei vor introduce km din bord când ajung la muncă și când ajung acasă, din ecranul „Astăzi”.
         </Empty>
       )}
 
@@ -110,7 +111,13 @@ function Masini() {
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <div className="text-xs font-semibold uppercase text-slate-500">Total km în perioadă</div>
               <div className="text-2xl font-bold">{formatKm(total)}</div>
-              <div className="text-xs text-slate-500">{rows.filter((r) => r.distance === null).length > 0 ? "ultima zi se calculează după următoarea citire" : " "}</div>
+              {(bySegment.get("acasă → muncă") || bySegment.get("muncă → acasă")) ? (
+                <div className="mt-1 space-y-0.5 text-xs text-slate-600">
+                  {bySegment.get("acasă → muncă") ? <div>acasă → muncă: <strong className="tabular-nums">{formatKm(bySegment.get("acasă → muncă")!)}</strong></div> : null}
+                  {bySegment.get("muncă → acasă") ? <div>muncă → acasă: <strong className="tabular-nums">{formatKm(bySegment.get("muncă → acasă")!)}</strong></div> : null}
+                </div>
+              ) : null}
+              <div className="text-xs text-slate-500">{rows.filter((r) => r.distance === null).length > 0 ? "ultima citire se calculează după următoarea" : " "}</div>
             </div>
             <Card title="Pe mașină">
               {byVehicle.size === 0 ? <p className="text-sm text-slate-500">—</p> : (
@@ -129,7 +136,7 @@ function Masini() {
           {rows.length === 0 ? <Empty title="Nicio citire în perioada aleasă" /> : (
             <ReadingsTable rows={rows} vehicles={vehicles} employees={employees} onEdit={(r) => setReadingForm({ reading: r })} />
           )}
-          <p className="text-xs text-slate-500">Km parcurși = citirea următoare − citirea zilei. Se calculează automat a doua zi, când șoferul introduce noua citire, și se trec pe ziua și șoferul citirii anterioare.</p>
+          <p className="text-xs text-slate-500">Șoferul scrie km de pe bord când ajunge la muncă și când ajunge acasă. Km parcurși = citirea următoare − citirea curentă: „muncă → acasă” e ziua de lucru plus drumul spre casă, „acasă → muncă” e drumul de dimineață.</p>
         </div>
       )}
 
@@ -157,19 +164,30 @@ function Masini() {
 
 function ReadingsTable({ rows, vehicles, employees, onEdit }: { rows: ReadingWithDistance[]; vehicles: Map<string, Vehicle>; employees: Map<string, Employee>; onEdit: (r: OdometerReading) => void }) {
   const dist = (r: ReadingWithDistance) => r.distance === null
-    ? <span className="text-slate-400">se calculează după următoarea citire</span>
-    : <span className="font-semibold">{formatKm(r.distance)}{r.spanDays && r.spanDays > 1 ? <span className="font-normal text-slate-500"> ({r.spanDays} zile)</span> : null}</span>;
+    ? <span className="text-slate-400">după următoarea citire</span>
+    : <span className="font-semibold">{formatKm(r.distance)}{segmentLabel(r) ? <span className="font-normal text-slate-500"> ({segmentLabel(r)})</span> : null}</span>;
+  const moment = (r: ReadingWithDistance) => {
+    const k = r.kind ?? "munca"; const Icon = k === "acasa" ? Home : Briefcase;
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+        <Icon className="h-3.5 w-3.5 text-slate-500" />{KIND_LABEL[k]}
+        {r.recorded_at ? <span className="text-xs text-slate-500">{new Date(r.recorded_at).toLocaleTimeString(localeTag(), { hour: "2-digit", minute: "2-digit" })}</span> : null}
+        {r.lat != null && r.lon != null ? <a href={`https://www.google.com/maps?q=${r.lat},${r.lon}`} target="_blank" rel="noreferrer" aria-label="Locul citirii" className="text-orange-700"><MapPin className="h-3.5 w-3.5" /></a> : null}
+      </span>
+    );
+  };
   return (
     <>
       <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600">
-            <tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Mașina</th><th className="px-3 py-2">Șofer</th><th className="px-3 py-2 text-right">Km bord</th><th className="px-3 py-2 text-right">Km parcurși</th><th className="px-3 py-2">Observații</th><th /></tr>
+            <tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Moment</th><th className="px-3 py-2">Mașina</th><th className="px-3 py-2">Șofer</th><th className="px-3 py-2 text-right">Km bord</th><th className="px-3 py-2 text-right">Km parcurși</th><th className="px-3 py-2">Observații</th><th /></tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-t border-slate-100">
                 <td className="whitespace-nowrap px-3 py-2">{shortDate(r.reading_date)}</td>
+                <td className="px-3 py-2">{moment(r)}</td>
                 <td className="px-3 py-2">{vehicles.get(r.vehicle_id)?.name} <span className="text-xs text-slate-500">{vehicles.get(r.vehicle_id)?.plate}</span></td>
                 <td className="px-3 py-2">{r.employee_id ? employees.get(r.employee_id)?.full_name : "—"}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.km.toLocaleString(localeTag())}</td>
@@ -188,6 +206,7 @@ function ReadingsTable({ rows, vehicles, employees, onEdit }: { rows: ReadingWit
               <span className="font-semibold">{shortDate(r.reading_date)} · {vehicles.get(r.vehicle_id)?.name}</span>
               <button onClick={() => onEdit(r)} className="rounded p-2 text-slate-500" aria-label="Modifică"><Pencil className="h-4 w-4" /></button>
             </div>
+            <div className="text-sm">{moment(r)}</div>
             <div className="text-sm text-slate-600">{r.employee_id ? employees.get(r.employee_id)?.full_name : "—"} · bord {r.km.toLocaleString(localeTag())} km</div>
             <div className="mt-1 text-sm">Parcurși: {dist(r)}</div>
             {r.note && <div className="mt-1 text-xs text-slate-500">{r.note}</div>}
@@ -204,17 +223,18 @@ function ReadingForm({ reading, vehicles, employees, onClose, onSaved }: { readi
   const [date, setDate] = useState(reading?.reading_date ?? todayIn(tz));
   const [employeeId, setEmployeeId] = useState(reading?.employee_id ?? "");
   const [km, setKm] = useState(reading ? String(reading.km) : "");
+  const [kind, setKind] = useState<OdometerKind>(reading?.kind ?? "munca");
   const [note, setNote] = useState(reading?.note ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     setBusy(true); setError(null);
-    const payload = { vehicle_id: vehicleId, reading_date: date, employee_id: employeeId || null, km: Number(km), note: note.trim() || null };
+    const payload = { vehicle_id: vehicleId, reading_date: date, kind, employee_id: employeeId || null, km: Number(km), note: note.trim() || null };
     const sb = supabase();
     const { error } = reading ? await sb.from("odometer_readings").update(payload).eq("id", reading.id) : await sb.from("odometer_readings").insert({ ...payload, company_id: company!.id });
     setBusy(false);
-    if (error) { setError(error.code === "23505" ? "Există deja o citire pentru această mașină în ziua aleasă. Modific-o pe aceea." : humanError(error)); return; }
+    if (error) { setError(error.code === "23505" ? "Există deja o citire pentru această mașină în ziua și momentul alese. Modific-o pe aceea." : humanError(error)); return; }
     onSaved();
   }
   async function remove() {
@@ -233,6 +253,12 @@ function ReadingForm({ reading, vehicles, employees, onClose, onSaved }: { readi
       </>}>
       <div className="space-y-4">
         <Field label="Mașina"><Select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name}{v.plate ? ` · ${v.plate}` : ""}</option>)}</Select></Field>
+        <Field label="Moment">
+          <Select value={kind} onChange={(e) => setKind(e.target.value as OdometerKind)}>
+            <option value="munca">{KIND_LABEL.munca}</option>
+            <option value="acasa">{KIND_LABEL.acasa}</option>
+          </Select>
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Data"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
           <Field label="Km bord"><Input inputMode="numeric" value={km} onChange={(e) => setKm(e.target.value.replace(/[^\d]/g, ""))} /></Field>
