@@ -102,7 +102,7 @@ function Masini() {
             </Select>
             <Select className="w-auto" value={fDriver} onChange={(e) => setFDriver(e.target.value)} aria-label="Șofer">
               <option value="">Toți șoferii</option>
-              {d.employees.filter((e) => e.is_driver || d.readings.some((r) => r.employee_id === e.id)).map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+              {d.employees.filter((e) => e.is_driver || d.readings.some((r) => r.employee_id === e.id)).map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.trade ? ` — ${e.trade}` : ""}</option>)}
             </Select>
           </div>
 
@@ -240,7 +240,7 @@ function ReadingForm({ reading, vehicles, employees, onClose, onSaved }: { readi
         <Field label="Șofer">
           <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
             <option value="">— necunoscut —</option>
-            {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+            {employees.map((e) => <option key={e.id} value={e.id}>{e.full_name}{e.trade ? ` — ${e.trade}` : ""}</option>)}
           </Select>
         </Field>
         <Field label="Observații"><Textarea value={note} onChange={(e) => setNote(e.target.value)} /></Field>

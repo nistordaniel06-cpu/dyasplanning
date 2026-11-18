@@ -943,6 +943,24 @@
 "aprobate": "approved",
 ". Orele trimise și ciornele sunt afișate separat și nu sunt incluse în coloana „Aprobate”. Pontajele respinse nu se adună.": ". Submitted hours and drafts are shown separately and are not included in the “Approved” column. Rejected timesheets are not added up.",
 "Toată firma": "Whole company",
+"Pornește notificările": "Turn on notifications",
+"Mai târziu": "Later",
+"Activează": "Turn on",
+"Am înțeles": "Got it",
+"Ca să afli imediat când primești un mesaj în chat sau când ți se schimbă programul.": "So you know right away when you get a chat message or your schedule changes.",
+"Notificări pe iPhone": "Notifications on iPhone",
+"Pe iPhone, notificările merg doar din aplicația instalată: în Safari apasă": "On iPhone, notifications only work from the installed app: in Safari tap",
+", apoi deschide DYASPlanning de pe ecran și apasă „Activează”.": ", then open DYASPlanning from the home screen and tap “Turn on”.",
+"fără meserie": "no trade",
+"Elimină / șterge": "Remove / delete",
+"Elimină din firmă": "Remove from company",
+"(recomandat)": "(recommended)",
+"Nu mai poate intra în aplicație și nu mai apare în planning. Orele și pontajele lui rămân în rapoarte. Îl poți reactiva oricând din „Arată inactivi”.": "They can no longer sign in and no longer appear in planning. Their hours and timesheets stay in the reports. You can reactivate them anytime from “Show inactive”.",
+"Se șterg fișa, alocările, pontajele și absențele lui. Nu se mai poate recupera.": "Their profile, assignments, timesheets and absences are deleted. It can't be recovered.",
+"Elimină angajatul": "Remove employee",
+"Doar administratorul poate elimina angajați.": "Only the administrator can remove employees.",
+"Nu te poți elimina pe tine.": "You can't remove yourself.",
+"Scrie exact numele angajatului pentru confirmare.": "Type the employee's exact name to confirm.",
 "Utilizare": "Usage",
 "Utilizare aplicație": "App usage",
 "Utilizarea aplicației": "App usage",
@@ -1331,6 +1349,14 @@
 [
 "^(\\d+) conectări$",
 "$1 sign-ins"
+],
+[
+"^Elimină: (.+)$",
+"Remove: $1"
+],
+[
+"^Scrie numele pentru confirmare: (.+)$",
+"Type the name to confirm: $1"
 ],
 [
 "^din (\\d+) cu cont$",

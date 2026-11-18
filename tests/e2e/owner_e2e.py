@@ -8,7 +8,8 @@ with sync_playwright() as p:
     def ctx(w=390,h=844,mobile=True,geo=None,ask=False):
         extra={"geolocation":geo,"permissions":["geolocation"]} if geo else {}
         c=b.new_context(viewport={"width":w,"height":h}, is_mobile=mobile, has_touch=mobile, locale="ro-RO", timezone_id="Europe/Bucharest", **extra)
-        if not ask and not geo: c.add_init_script("try{localStorage.getItem('dyas.loc')||localStorage.setItem('dyas.loc','no:'+Date.now())}catch(e){}")
+        if geo: c.add_init_script("try{localStorage.setItem('dyas.push','no:'+Date.now())}catch(e){}")
+        if not ask and not geo: c.add_init_script("try{localStorage.getItem('dyas.loc')||localStorage.setItem('dyas.loc','no:'+Date.now());localStorage.getItem('dyas.push')||localStorage.setItem('dyas.push','no:'+Date.now())}catch(e){}")
         pg=c.new_page(); pg.set_default_timeout(15000)
         pg.on("pageerror", lambda e: probs.append(f"pageerror {e}"))
         pg.on("console", lambda m: m.type=="error" and not re.search(r"WebSocket|realtime|Failed to load resource", m.text) and probs.append(m.text))
@@ -69,6 +70,22 @@ with sync_playwright() as p:
     o.goto(B+"/proprietar?tab=firme"); o.locator("main").get_by_role("button").filter(has_text="Client Construct SRL").first.click()
     o.get_by_role("button", name="Utilizarea aplicației").click(); expect(o.get_by_text("Persoane care au deschis aplicația, pe zile")).to_be_visible()
     ok("proprietarul vede utilizarea fiecărei firme")
+    # adminul elimină / șterge un angajat; codul nou de acces
+    c.goto(B+"/angajati"); c.get_by_role("button", name="Adaugă angajat").first.click(); d=c.get_by_role("dialog")
+    d.get_by_label("Nume și prenume").fill("Vasile Pop"); d.get_by_label("Meserie").fill("Faianțar"); d.get_by_label("Telefon (WhatsApp)").fill("0733 444 555")
+    d.get_by_role("button", name="Adaugă angajat").click(); expect(d).to_be_hidden()
+    expect(c.get_by_text("Faianțar").first).to_be_visible(); ok("meseria apare ca etichetă în lista de angajați")
+    c.get_by_text("Vasile Pop", exact=True).click(); c.get_by_role("button", name="Acces în aplicație").click(); d=c.get_by_role("dialog")
+    d.get_by_role("button", name="Generează codul").click(); expect(d.locator("div.font-mono")).to_be_visible(); d.get_by_role("button", name="Gata").click()
+    expect(c.get_by_role("button", name="Cod nou de acces")).to_be_visible(); ok("adminul generează cod de acces și poate genera altul nou")
+    c.get_by_role("button", name="Elimină / șterge").click(); d=c.get_by_role("dialog"); d.get_by_role("button", name="Elimină angajatul").click(); expect(d).to_be_hidden()
+    expect(c.get_by_text("Inactiv").first).to_be_visible(); expect(c.get_by_text("Fără acces").first).to_be_visible()
+    assert sql("select count(*) from auth.users where email='t40733444555@telefon.dyasplanning.app'")=="0"
+    ok("eliminare: inactiv, fără acces, contul de telefon șters")
+    c.get_by_role("button", name="Elimină / șterge").click(); d=c.get_by_role("dialog"); d.get_by_text("Șterge definitiv").first.click()
+    expect(d.get_by_role("button", name="Șterge definitiv")).to_be_disabled(); d.get_by_label(re.compile("Scrie numele pentru confirmare")).fill("Vasile Pop")
+    d.screenshot(path="shots/89_sterge_angajat.png"); d.get_by_role("button", name="Șterge definitiv").click(); c.wait_for_url(re.compile(r"/angajati$"))
+    assert sql("select count(*) from employees where full_name='Vasile Pop'")=="0"; ok("ștergere definitivă a angajatului")
     # conectări cu GPS + fișa utilizatorului + hartă
     o.goto(B+"/proprietar?tab=conectari"); expect(o.get_by_text(re.compile(r"44\.480(5|50), 26\.129(8|80)")).first).to_be_visible(); expect(o.get_by_text("(±12 m)").first).to_be_visible()
     o.screenshot(path="shots/83_conectari_gps.png", full_page=True); ok("conectarea are locația GPS exactă (±12 m)")
@@ -79,6 +96,8 @@ with sync_playwright() as p:
     o.screenshot(path="shots/85_harta.png", full_page=True); ok("harta cu pozițiile")
     # fereastra de permisiune pentru locație (prima deschidere, fără permisiune)
     q=ctx(ask=True); q.goto(B+"/login"); q.get_by_label("Număr de telefon").fill("client@firma.ro"); q.get_by_label("Parolă").fill("parola1234"); q.get_by_role("button", name="Intră în aplicație").click(); q.wait_for_url(re.compile("/dashboard"))
+    expect(q.get_by_text("Pornește notificările")).to_be_visible(); q.screenshot(path="shots/88_cerere_notificari.png")
+    q.get_by_role("button", name="Mai târziu").click(); ok("la deschidere: cererea de notificări, apoi cea de locație")
     expect(q.get_by_text("Locația la deschiderea aplicației")).to_be_visible(); q.screenshot(path="shots/86_cerere_locatie.png")
     q.get_by_role("button", name="Nu acum").click(); expect(q.get_by_text("Locația la deschiderea aplicației")).to_have_count(0)
     q.reload(); q.wait_for_timeout(1500); expect(q.get_by_text("Locația la deschiderea aplicației")).to_have_count(0); ok("cererea de locație: explicație, „Nu acum” nu mai deranjează")

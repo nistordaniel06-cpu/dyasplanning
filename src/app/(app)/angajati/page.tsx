@@ -66,9 +66,12 @@ function Angajati() {
                   <span className="font-semibold">{e.full_name}</span>
                   {!e.active && <Badge tone="gray">Inactiv</Badge>}
                   {!e.user_id && <Badge tone="gray">Fără acces</Badge>}
-                  {e.is_driver && <Badge tone="orange">Șofer</Badge>}
                 </div>
-                <div className="text-sm text-slate-600">{e.trade ?? "—"}{e.team_id ? ` · ${teams.get(e.team_id)?.name}` : ""}</div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-slate-600">
+                  {e.trade ? <Badge tone="blue">{e.trade}</Badge> : <span className="text-xs text-slate-400">fără meserie</span>}
+                  {e.is_driver && <Badge tone="orange">Șofer</Badge>}
+                  {e.team_id && <span>· {teams.get(e.team_id)?.name}</span>}
+                </div>
                 {e.phone && <div className="flex items-center gap-1 text-xs text-slate-500"><Phone className="h-3 w-3" />{e.phone}</div>}
                 <div className="mt-1.5">
                   {e.active && (av.kind === "disponibil" ? <Badge tone="green">Disponibil azi</Badge>

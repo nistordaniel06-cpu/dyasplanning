@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, KeyRound, Pencil, Plus, Trash2, UserMinus } from "lucide-react";
 import { RequireRole } from "@/components/shell";
 import { Badge, Button, Card, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, StatusBadge, Textarea } from "@/components/ui";
 import { EmployeeForm } from "@/components/EmployeeForm";
@@ -25,9 +25,11 @@ export default function AngajatPage() {
 
 function Angajat() {
   const { id } = useParams<{ id: string }>();
-  const { tz } = useSession();
+  const s = useSession();
+  const { tz } = s;
   const today = todayIn(tz);
   const [editOpen, setEditOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [absOpen, setAbsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -84,11 +86,16 @@ function Angajat() {
     <div className="space-y-4">
       <Link href="/angajati" className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"><ArrowLeft className="h-4 w-4" />Angajați</Link>
       <PageHeader title={e.full_name}
-        subtitle={<span className="flex flex-wrap items-center gap-2">{e.trade ?? "—"}{team && <> · {team.name}</>}{!e.active && <Badge tone="gray">Inactiv</Badge>}{e.user_id ? <Badge tone="green">Are acces</Badge> : <Badge tone="gray">Fără acces</Badge>}{e.is_driver && <Badge tone="orange">Șofer</Badge>}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2">{e.trade ? <Badge tone="blue">{e.trade}</Badge> : "—"}{team && <> · {team.name}</>}{!e.active && <Badge tone="gray">Inactiv</Badge>}{e.user_id ? <Badge tone="green">Are acces</Badge> : <Badge tone="gray">Fără acces</Badge>}{e.is_driver && <Badge tone="orange">Șofer</Badge>}</span>}
         actions={<>
           {e.active && <Button onClick={() => setInviteOpen(true)}><KeyRound className="h-4 w-4" />{e.user_id ? "Cod nou de acces" : "Acces în aplicație"}</Button>}
           <Button onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" />Modifică</Button>
+          {e.user_id !== s.user?.id && <Button variant="ghost" onClick={() => setRemoveOpen(true)}><UserMinus className="h-4 w-4" />Elimină / șterge</Button>}
         </>} />
+      {removeOpen && <RemoveEmployeeDialog employee={e} onClose={() => setRemoveOpen(false)} onDone={async (deleted) => {
+        setRemoveOpen(false);
+        if (deleted) window.location.href = "/angajati"; else await q.reload();
+      }} />}
       {err && <ErrorBox message={err} />}
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -249,6 +256,46 @@ function InviteDialog({ employee, onClose }: { employee: Employee; onClose: () =
           </>
         )}
         {error && <ErrorBox message={error} />}
+      </div>
+    </Modal>
+  );
+}
+
+function RemoveEmployeeDialog({ employee, onClose, onDone }: { employee: Employee; onClose: () => void; onDone: (deleted: boolean) => Promise<void> }) {
+  const [mode, setMode] = useState<"remove" | "delete">("remove");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function go() {
+    setBusy(true); setErr(null);
+    const { error } = await supabase().rpc("admin_remove_employee", { p_employee: employee.id, p_delete: mode === "delete", p_confirm: confirm });
+    setBusy(false);
+    if (error) { setErr(humanError(error)); return; }
+    await onDone(mode === "delete");
+  }
+  return (
+    <Modal open onClose={onClose} title={`Elimină: ${employee.full_name}`}
+      footer={<>
+        <Button onClick={onClose}>Renunță</Button>
+        <Button variant="danger" loading={busy} disabled={mode === "delete" && confirm.trim() !== employee.full_name} onClick={go}>
+          {mode === "remove" ? "Elimină angajatul" : "Șterge definitiv"}
+        </Button>
+      </>}>
+      <div className="space-y-3 text-sm">
+        <label className="flex cursor-pointer gap-3 rounded-lg border border-slate-200 p-3 has-[:checked]:border-orange-400 has-[:checked]:bg-orange-50/50">
+          <input type="radio" name="mode" className="mt-1 accent-orange-600" checked={mode === "remove"} onChange={() => setMode("remove")} />
+          <span><strong>Elimină din firmă</strong> (recomandat)<br /><span className="text-slate-600">Nu mai poate intra în aplicație și nu mai apare în planning. Orele și pontajele lui rămân în rapoarte. Îl poți reactiva oricând din „Arată inactivi”.</span></span>
+        </label>
+        <label className="flex cursor-pointer gap-3 rounded-lg border border-slate-200 p-3 has-[:checked]:border-red-400 has-[:checked]:bg-red-50/50">
+          <input type="radio" name="mode" className="mt-1 accent-red-600" checked={mode === "delete"} onChange={() => setMode("delete")} />
+          <span><strong>Șterge definitiv</strong><br /><span className="text-slate-600">Se șterg fișa, alocările, pontajele și absențele lui. Nu se mai poate recupera.</span></span>
+        </label>
+        {mode === "delete" && (
+          <Field label={`Scrie numele pentru confirmare: ${employee.full_name}`}>
+            <Input value={confirm} onChange={(ev) => setConfirm(ev.target.value)} placeholder={employee.full_name} />
+          </Field>
+        )}
+        {err && <ErrorBox message={err} />}
       </div>
     </Modal>
   );
