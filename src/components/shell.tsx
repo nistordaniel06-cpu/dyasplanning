@@ -11,6 +11,7 @@ import { useServiceWorker } from "./AppSetup";
 import { AnnouncementBar } from "./Announcement";
 import { Toasts } from "./Toasts";
 import { BrandLogo, BrandName } from "./Brand";
+import { HelpLink, MaintenanceGate, WhatsNew } from "./AppExtras";
 import { OfflineSync } from "./OfflineSync";
 import { PresenceAndLocation } from "./LocationConsent";
 import { LanguageSwitch } from "./LanguageSwitch";
@@ -127,6 +128,7 @@ function FrameInner({ children }: { children: ReactNode }) {
             <div className="font-bold leading-tight"><BrandName /></div>
             <div className="truncate text-xs text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
           </div>
+          {!s.ownerOnly && <HelpLink className="-mr-1" />}
           <BellLink className="-mr-2" />
         </div>
         <nav className="flex-1 space-y-1 px-3">
@@ -156,10 +158,12 @@ function FrameInner({ children }: { children: ReactNode }) {
           <div className="truncate text-[11px] text-slate-500">{s.ownerOnly ? "Proprietar aplicație" : s.company?.name}</div>
         </div>
         <LanguageSwitch />
+        {!s.ownerOnly && <HelpLink className="-mr-1" />}
         <BellLink />
       </header>
 
-      <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-10"><OfflineSync /><AnnouncementBar />{children}</main>
+      <main className="min-w-0 flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-10"><MaintenanceGate /><OfflineSync /><AnnouncementBar />{children}</main>
+      <WhatsNew />
       <Toasts />
       <PresenceAndLocation />
 

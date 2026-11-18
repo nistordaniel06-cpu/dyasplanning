@@ -8,6 +8,7 @@ import type { MapPoint } from "@/components/owner/OwnerMap";
 import { UsageReport, type Usage } from "@/components/UsageReport";
 import { CompanyEditor } from "@/components/owner/CompanyEditor";
 import { NewCompanyButton } from "@/components/owner/NewCompany";
+import { MaintenanceCard, MessagesTab, NewsTab, SupportTab } from "@/components/owner/Communication";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, Stat, Tabs, Textarea, cx } from "@/components/ui";
 const OwnerMap = dynamic(() => import("@/components/owner/OwnerMap").then((m) => m.OwnerMap), { ssr: false, loading: () => <Loading /> });
 import { useSession } from "@/lib/session";
@@ -93,13 +94,15 @@ export default function ProprietarPage() {
   return <Suspense fallback={<Loading />}><Proprietar /></Suspense>;
 }
 
-type Tab = "prezentare" | "firme" | "activitate" | "conectari" | "harta" | "anunturi" | "platforma";
-const TABS: Tab[] = ["prezentare", "firme", "activitate", "conectari", "harta", "anunturi", "platforma"];
+type Tab = "prezentare" | "firme" | "activitate" | "conectari" | "harta" | "mesaje" | "noutati" | "ajutor" | "anunturi" | "platforma";
+const TABS: Tab[] = ["prezentare", "firme", "activitate", "conectari", "harta", "mesaje", "noutati", "ajutor", "anunturi", "platforma"];
 
 function Proprietar() {
   const sp = useSearchParams();
   const initial = sp.get("tab") as Tab | null;
   const [tab, setTab] = useState<Tab>(initial && TABS.includes(initial) ? initial : "prezentare");
+  const help = useQuery(async () => (must(await supabase().rpc("owner_support_list", { p_status: "nou" })) as unknown[]).length, []);
+  const newHelp = help.data ?? 0;
   const [companyFilter, setCompanyFilter] = useState<string>("");
   const [userId, setUserId] = useState<string | null>(null);
   return (
@@ -112,6 +115,9 @@ function Proprietar() {
           { value: "activitate", label: "Activitate" },
           { value: "conectari", label: "Conectări" },
           { value: "harta", label: "Hartă" },
+          { value: "mesaje", label: "Mesaje" },
+          { value: "noutati", label: "Ce e nou" },
+          { value: "ajutor", label: <span className="inline-flex items-center gap-1.5">Ajutor{newHelp > 0 && <span className="rounded-full bg-red-600 px-1.5 text-xs text-white">{newHelp}</span>}</span> },
           { value: "anunturi", label: "Anunțuri" },
           { value: "platforma", label: "Platformă" },
         ]} />
@@ -122,6 +128,9 @@ function Proprietar() {
       {tab === "conectari" && <LoginsTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
       {tab === "harta" && <MapTab company={companyFilter} setCompany={setCompanyFilter} onUser={setUserId} />}
       <UserDetailModal userId={userId} onClose={() => setUserId(null)} />
+      {tab === "mesaje" && <MessagesTab />}
+      {tab === "noutati" && <NewsTab />}
+      {tab === "ajutor" && <SupportTab onChange={() => void help.reload()} />}
       {tab === "anunturi" && <AnnouncementsTab />}
       {tab === "platforma" && <PlatformTab />}
     </div>
@@ -534,6 +543,7 @@ function PlatformTab() {
   const on = q.data!.signup_enabled;
   return (
     <div className="space-y-4">
+      <MaintenanceCard />
       <Card title="Înscrierea firmelor noi">
         <p className="text-sm text-slate-700">
           Pagina ascunsă de creare cont este <strong>{on ? "deschisă" : "închisă"}</strong>.

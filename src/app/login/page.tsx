@@ -8,6 +8,7 @@ import { looksLikeEmail, phoneLoginEmail } from "@/lib/phone";
 import { Button, ErrorBox, Field, Input } from "@/components/ui";
 import { PhoneInput } from "@/components/PhoneInput";
 import { BrandLogo, BrandName } from "@/components/Brand";
+import { useAppStatus } from "@/components/AppExtras";
 import { COUNTRIES, countryForTimezone, fullDigits, type Country } from "@/lib/countries";
 
 /** Pagina principală: doar autentificare. Angajații intră cu telefonul și codul primit de la administrator. */
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   // „Email” = administratori și proprietari (tastatură cu litere); „Telefon” = angajați (tastatură cu cifre)
   const [mode, setMode] = useState<"telefon" | "email">("telefon");
+  const status = useAppStatus();
   const isEmail = mode === "email" || looksLikeEmail(login);
   const [country, setCountry] = useState<Country>(COUNTRIES[0]);
   useEffect(() => {
@@ -64,6 +66,11 @@ export default function LoginPage() {
         </div>
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h1 className="text-lg font-semibold">Autentificare</h1>
+          {status?.maintenance && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+              <strong>Aplicația se actualizează.</strong> <span data-no-i18n>{status.message ?? ""}</span>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-sm font-semibold" role="tablist">
             {([["telefon", "Cu telefon"], ["email", "Cu email"]] as const).map(([m, l]) => (
               <button key={m} type="button" role="tab" aria-selected={mode === m}
