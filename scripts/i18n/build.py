@@ -15,6 +15,8 @@ exact.update({
  "aprobate": "approved",
  ". Orele trimise și ciornele sunt afișate separat și nu sunt incluse în coloana „Aprobate”. Pontajele respinse nu se adună.": ". Submitted hours and drafts are shown separately and are not included in the “Approved” column. Rejected timesheets are not added up.",
  "Toată firma": "Whole company",
+ "Doar vizualizare": "View only", "Doar administratorul poate modifica planningul.": "Only the administrator can change the planning.",
+ "Misiune": "Task", "Fără misiune": "No task", "Ora": "Time", "Adresă": "Address", "Notă": "Note",
  "Program — de la": "Schedule — from", "Programul de lucru implicit": "Default working hours", "De la": "From",
  "Se completează automat la angajații noi, în planning și la pontaj. Fiecare angajat poate avea programul lui (din fișa angajatului → Modifică).": "Filled in automatically for new employees, in planning and in timesheets. Each employee can have their own schedule (employee page → Edit).",
  "lucrate pe zi": "worked per day", "lucrate pe zi. Programul acesta se completează automat în planning și la pontaj.": "worked per day. This schedule is filled in automatically in planning and timesheets.",

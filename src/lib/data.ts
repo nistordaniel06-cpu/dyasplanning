@@ -58,3 +58,10 @@ export async function loadVehicles(): Promise<Vehicle[]> {
 export async function loadOdometer(fromDate: string, toDate: string): Promise<OdometerReading[]> {
   return must(await sb().from("odometer_readings").select("*").gte("reading_date", fromDate).lte("reading_date", toDate).order("reading_date")) as OdometerReading[];
 }
+
+/** Lucrările de care răspunde / pe care lucrează utilizatorul (șeful de echipă vede toate în planning, dar pontează doar aici). */
+export async function loadScopeProjectIds(): Promise<Set<string>> {
+  const { data, error } = await sb().rpc("my_scope_project_ids");
+  if (error) throw new Error(error.message);
+  return new Set(((data ?? []) as unknown[]).map((x) => (typeof x === "string" ? x : (x as { my_scope_project_ids: string }).my_scope_project_ids)));
+}

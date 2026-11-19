@@ -372,7 +372,7 @@ E2 = {
 "închisă": "closed",
 "înscrisă: imediat, cu emailul adminului.": "signed up: immediately, with the admin's email.",
 "Șef de echipă": "Team leader",
-"Șef de echipă — vede echipa, actualizează progresul": "Team leader — sees the team, updates progress",
+"Șef de echipă — vede tot planningul și echipa, actualizează progresul": "Team leader — sees the full planning and the team, updates progress",
 "Șeful de echipă a fost actualizat.": "The team leader was updated.",
 "Șofer": "Driver",
 "Șofer — introduce dimineața km de la bordul mașinii": "Driver — enters the dashboard mileage every morning",

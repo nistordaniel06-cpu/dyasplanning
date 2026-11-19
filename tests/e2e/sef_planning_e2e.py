@@ -1,0 +1,52 @@
+import re, json, subprocess
+from playwright.sync_api import sync_playwright, expect
+B="http://localhost:3000"; probs=[]
+def ok(m): print("✓", m, flush=True)
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path=__import__("os").environ.get("CHROME", "/usr/bin/google-chrome"), args=["--no-sandbox"])
+    def ctx(w=390,h=844,mobile=True):
+        c=b.new_context(viewport={"width":w,"height":h}, is_mobile=mobile, has_touch=mobile, locale="ro-RO", timezone_id="Europe/Bucharest")
+        c.add_init_script("try{localStorage.getItem('dyas.loc')||localStorage.setItem('dyas.loc','no:'+Date.now());localStorage.getItem('dyas.push')||localStorage.setItem('dyas.push','no:'+Date.now())}catch(e){}"); pg=c.new_page(); pg.set_default_timeout(15000)
+        pg.on("pageerror", lambda e: probs.append(f"pageerror {e}"))
+        pg.on("console", lambda m: m.type=="error" and not re.search(r"WebSocket|realtime|Failed to load resource", m.text) and probs.append(m.text))
+        return pg
+    a=ctx(1280,860,False)
+    a.goto(B+"/firma-noua-5lo4x0")
+    a.get_by_label("Email").fill("patron@firma.ro"); a.get_by_label("Parolă").fill("parola1234"); a.get_by_role("button", name="Creează cont").click()
+    a.wait_for_url(re.compile("/onboarding")); a.get_by_role("tab", name="Înființez firma").click()
+    a.get_by_label("Numele firmei").fill("Construct Test SRL"); a.get_by_label("Numele tău").fill("Dan Patron"); a.get_by_role("button", name="Creează firma").click()
+    a.wait_for_url(re.compile("/dashboard"))
+    def employee(name, phone):
+        a.goto(B+"/angajati"); a.get_by_role("button", name="Adaugă angajat").first.click()
+        d=a.get_by_role("dialog"); d.get_by_label("Nume și prenume").fill(name); d.get_by_label(re.compile("^Telefon")).fill(phone)
+        d.get_by_role("button", name="Adaugă angajat").click(); expect(d).to_be_hidden()
+    employee("Ion Pop", "0722 111 222"); employee("Vasile Ene", "0722 333 444")
+    def job(name, who):
+        a.goto(B+"/lucrari?nou=1"); d=a.get_by_role("dialog"); d.get_by_label("Nume lucrare").fill(name); d.get_by_label("Status").select_option("in_desfasurare")
+        d.get_by_role("button", name="Adaugă lucrare").click(); a.wait_for_url(re.compile("/lucrari/"))
+        a.get_by_role("link", name="Alocă angajați").click(); a.locator("button[aria-pressed]").filter(has_text=who).click()
+        a.get_by_role("button", name="Salvează alocările").click(); expect(a.get_by_role("heading", name="Alocări salvate")).to_be_visible()
+    job("Apartament Militari", "Ion Pop"); job("Vila Otopeni", "Vasile Ene")
+    # Ion = șef de echipă
+    a.goto(B+"/angajati"); a.get_by_text("Ion Pop", exact=True).click()
+    a.get_by_role("button", name="Acces în aplicație").click(); d=a.get_by_role("dialog"); d.get_by_role("button", name="Generează codul").click()
+    code=d.locator("div.font-mono").inner_text().strip(); d.get_by_role("button", name="Gata").click()
+    i=ctx(1280,860,False)
+    i.goto(B+"/login"); i.get_by_label("Număr de telefon").fill("0722 111 222"); i.get_by_label("Cod de acces").fill(code); i.get_by_role("button", name="Intră în aplicație").click()
+    i.wait_for_url(re.compile("/astazi"))
+    subprocess.run(["psql","-h","/tmp","-p","5433","-U","postgres","-d","dyas_e2e","-qc","update memberships m set role='sef_echipa' from employees e where e.user_id=m.user_id and e.full_name='Ion Pop'"], check=True)
+    i.goto(B+"/astazi"); i.reload()
+    expect(i.get_by_role("link", name="Planning")).to_be_visible(); ok("șeful are „Planning” în meniu")
+    i.get_by_role("link", name="Planning").click(); i.wait_for_url(re.compile("/planning"))
+    expect(i.locator("main").get_by_text("Doar vizualizare")).to_be_visible()
+    expect(i.locator("table").get_by_text("Vila Otopeni")).to_be_visible(); expect(i.locator("table").get_by_text("Vasile Ene")).to_be_visible()
+    ok("șeful vede tot planningul (și lucrarea unde nu e alocat)")
+    expect(i.get_by_role("button", name="Alocă angajați")).to_have_count(0); expect(i.get_by_role("link", name=re.compile("^Alocă"))).to_have_count(0)
+    expect(i.get_by_role("button", name=re.compile("Copiază"))).to_have_count(0); ok("fără butoane de modificare")
+    i.locator("table").get_by_role("button").filter(has_text="Vasile Ene").first.click()
+    d=i.get_by_role("dialog"); expect(d.get_by_text("Vila Otopeni")).to_be_visible(); expect(d.get_by_role("button", name="Salvează")).to_have_count(0)
+    i.screenshot(path="shots/60_sef_planning.png"); d.get_by_role("button", name="Închide").first.click()
+    ok("la atingere: doar detalii, fără editare")
+    i.goto(B+"/echipa"); expect(i.get_by_role("heading", name="Echipa mea")).to_be_visible()
+    expect(i.get_by_text("Vila Otopeni")).to_have_count(0); ok("„Echipa mea” arată în continuare doar lucrările lui")
+    print("PROBLEME:", probs or "niciuna"); b.close(); print("SEF PLANNING E2E COMPLET")

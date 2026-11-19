@@ -12,7 +12,7 @@ import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
-import { byId, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTimeEntries } from "@/lib/data";
+import { byId, loadAssignments, loadEmployees, loadProjects, loadScopeProjectIds, loadTasks, loadTimeEntries } from "@/lib/data";
 import { formatMinutes } from "@/lib/hours";
 import { addDays, rangeUtc, todayIn } from "@/lib/time";
 import type { TimeEntry } from "@/lib/types";
@@ -49,12 +49,13 @@ function Pontaj() {
   const [from, to] = presetRange(preset, tz, custom);
 
   const refs = useQuery(async () => {
-    const [employees, projects, tasks] = await Promise.all([loadEmployees({ includeInactive: true }), loadProjects(), loadTasks()]);
+    const [employees, projects, tasks, scope] = await Promise.all([loadEmployees({ includeInactive: true }), loadProjects(), loadTasks(),
+      role === "sef_echipa" ? loadScopeProjectIds() : Promise.resolve(null)]);
     // asignările recente — pentru legarea pontajului de programul planificat
     const t = todayIn(tz);
     const [f, tt] = rangeUtc(addDays(t, -31), addDays(t, 1), tz);
     const assignments = await loadAssignments(f, tt, { employeeId: employee!.id });
-    return { employees, projects, tasks, assignments };
+    return { employees, projects, tasks, assignments, scope };
   }, [employee?.id]);
 
   const q = useQuery(async () => {
@@ -87,7 +88,7 @@ function Pontaj() {
   }
 
   // Lucrările pe care angajatul le poate ponta = cele vizibile lui (RLS: unde e alocat).
-  const myProjects = refs.data?.projects.filter((p) => p.status !== "anulata") ?? [];
+  const myProjects = refs.data?.projects.filter((p) => p.status !== "anulata" && (!refs.data?.scope || refs.data.scope.has(p.id))) ?? [];
 
   return (
     <div>

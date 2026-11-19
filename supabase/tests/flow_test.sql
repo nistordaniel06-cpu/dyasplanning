@@ -156,6 +156,16 @@ update time_entries set status = 'aprobat' where id = tst.id('te_ion');
 select tst.assert((select status from time_entries where id = tst.id('te_ion')) = 'trimis', 'șeful nu poate aproba pontaje');
 select update_task_progress(tst.id('t_elec'), 20, 'in_lucru');
 select tst.assert((select progress from tasks where id = tst.id('t_elec')) = 20, 'șeful actualizează progresul pe lucrarea echipei');
+-- șeful vede tot planningul firmei (doar citire)
+select tst.assert((select count(*) from assignments) = (select count(*) from assignments a where a.company_id = tst.id('c1')) and (select count(*) from assignments) >= 3, 'șeful vede toate alocările firmei');
+select tst.assert((select count(*) from employees where id = tst.id('vasile')) = 1, 'șeful vede toți angajații firmei');
+select tst.assert((select count(*) from projects) = 2, 'șeful vede toate lucrările');
+update assignments set ends_at = ends_at + interval '1 hour' where employee_id = tst.id('vasile');
+delete from assignments where employee_id = tst.id('mihai');
+select tst.assert((select count(*) from assignments where employee_id = tst.id('mihai')) > 0, 'șeful nu poate șterge alocări');
+select tst.expect_error($$insert into assignments(company_id, employee_id, project_id, starts_at, ends_at)
+  values (tst.id('c1'), tst.id('vasile'), tst.id('p1'), '2026-11-25 08:00+02', '2026-11-25 10:00+02')$$, 'row-level security');
+select tst.assert((select count(*) from my_scope_project_ids()) >= 1, 'lucrările proprii ale șefului rămân separate');
 
 -- ================= Admin firma 2 (izolare) =================
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', false);

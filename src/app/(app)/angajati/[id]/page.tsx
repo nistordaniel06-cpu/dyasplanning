@@ -243,7 +243,7 @@ function InviteDialog({ employee, onClose }: { employee: Employee; onClose: () =
             <Field label="Rol în aplicație">
               <Select value={role} onChange={(e) => setRole(e.target.value as AppRole)}>
                 <option value="angajat">Angajat — își vede programul, trimite orele, chat</option>
-                <option value="sef_echipa">Șef de echipă — vede echipa, actualizează progresul</option>
+                <option value="sef_echipa">Șef de echipă — vede tot planningul și echipa, actualizează progresul</option>
                 <option value="admin">Administrator — acces complet</option>
               </Select>
             </Field>

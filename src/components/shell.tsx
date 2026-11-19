@@ -45,6 +45,7 @@ const EMPLOYEE_NAV: NavItem[] = [
 ];
 const LEADER_NAV: NavItem[] = [
   { href: "/astazi", label: "Astăzi", icon: Sun },
+  { href: "/planning", label: "Planning", icon: CalendarRange },
   { href: "/echipa", label: "Echipa", icon: Users },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/pontaj", label: "Pontaj", icon: Clock },

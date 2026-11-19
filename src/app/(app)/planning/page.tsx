@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Copy, Filter, MapPin, Plus } from "lucide-re
 import { RequireRole } from "@/components/shell";
 import { AssignmentEditor, type PlanningRefs } from "@/components/AssignmentEditor";
 import { CopyDialog } from "@/components/CopyDialog";
-import { Badge, Button, Empty, ErrorBox, Input, Loading, PageHeader, Select, Tabs, cx } from "@/components/ui";
+import { Badge, Button, Empty, ErrorBox, Input, Loading, Modal, PageHeader, Select, StatusBadge, Tabs, cx } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { byId, loadAbsences, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTeams } from "@/lib/data";
@@ -24,11 +24,12 @@ import type { Assignment, Employee, Project } from "@/lib/types";
 type View = "zi" | "saptamana" | "luna";
 
 export default function PlanningPage() {
-  return <RequireRole roles={["admin"]}><Planning /></RequireRole>;
+  return <RequireRole roles={["admin", "sef_echipa"]}><Planning /></RequireRole>;
 }
 
 function Planning() {
-  const { tz, company } = useSession();
+  const { tz, company, role } = useSession();
+  const readOnly = role !== "admin"; // șeful de echipă vede tot planningul, dar nu modifică
   const [view, setView] = useState<View>("saptamana");
   const [layout, setLayoutState] = useState<"lucrari" | "angajati">("lucrari");
   useEffect(() => {
@@ -42,7 +43,9 @@ function Planning() {
   const [fLocation, setFLocation] = useState("");
   const [fStatus, setFStatus] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [editing, setEditing] = useState<Assignment | null>(null);
+  const [editing, setEditingState] = useState<Assignment | null>(null);
+  const [viewing, setViewing] = useState<Assignment | null>(null);
+  const setEditing = (a: Assignment | null) => (readOnly ? setViewing(a) : setEditingState(a));
   const [copyOpen, setCopyOpen] = useState(false);
   const [toast, setToast] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -93,6 +96,7 @@ function Planning() {
   /** Mutare / redimensionare din drag-and-drop: verifică și salvează doar alocarea mutată. */
   async function moveAssignment(a: Assignment, startsAt: Date, endsAt: Date, employeeId: string, projectId: string = a.project_id) {
     if (!d) return;
+    if (readOnly) { setToast({ tone: "err", text: "Doar administratorul poate modifica planningul." }); await q.reload(); return; }
     const proposed = [{ id: a.id, employee_id: employeeId, project_id: projectId, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() }];
     const conflicts = findConflicts({
       proposed, existing: d.assignments, absences: d.absences, projects: d.projects, tz,
@@ -119,7 +123,7 @@ function Planning() {
   return (
     <div>
       <PageHeader title="Planning" subtitle={company?.name}
-        actions={<>
+        actions={readOnly ? <Badge tone="blue">Doar vizualizare</Badge> : <>
           {view !== "luna" && <Button onClick={() => setCopyOpen(true)}><Copy className="h-4 w-4" /> Copiază {view === "zi" ? "ziua" : "săptămâna"}</Button>}
           <Link href={`/planning/aloca?date=${view === "zi" ? date : todayIn(tz) > from ? todayIn(tz) : from}`}>
             <Button variant="primary"><Plus className="h-4 w-4" /> Alocă angajați</Button>
@@ -169,7 +173,7 @@ function Planning() {
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}
       {q.loading && !d && <Loading />}
       {d && d.employees.length === 0 && (
-        <Empty title="Nu există încă angajați" action={<Link href="/angajati"><Button variant="primary">Adaugă angajați</Button></Link>}>
+        <Empty title="Nu există încă angajați" action={readOnly ? undefined : <Link href="/angajati"><Button variant="primary">Adaugă angajați</Button></Link>}>
           Adaugă angajați și lucrări, apoi alocă-i în planning.
         </Empty>
       )}
@@ -181,7 +185,7 @@ function Planning() {
             <JobGrid days={view === "zi" ? [date] : datesBetween(from, to)} projects={d.projects}
               assignments={assignments.filter((a) => employees.some((e) => e.id === a.employee_id) || (!fEmployee && !fTeam))}
               onlyProject={fProject} location={fLocation} employees={byId(d.employees)} tasks={tasks} tz={tz}
-              onOpen={setEditing} onMove={moveAssignment} onPickDay={(day) => { setDate(day); setView("zi"); }} />
+              readOnly={readOnly} onOpen={setEditing} onMove={moveAssignment} onPickDay={(day) => { setDate(day); setView("zi"); }} />
           )}
           {view === "zi" && layout === "angajati" && (
             <>
@@ -217,7 +221,8 @@ function Planning() {
         <AssignmentEditor assignment={editing} refs={refs} onClose={() => setEditing(null)}
           onSaved={async () => { setEditing(null); setToast({ tone: "ok", text: "Modificarea a fost salvată." }); await q.reload(); }} />
       )}
-      {copyOpen && d && view !== "luna" && (
+      {viewing && d && <AssignmentDetails a={viewing} d={d} tz={tz} onClose={() => setViewing(null)} />}
+      {copyOpen && !readOnly && d && view !== "luna" && (
         <CopyDialog mode={view} from={from} to={to} source={assignments} refs={d} onClose={() => setCopyOpen(false)}
           onDone={async (n) => { setCopyOpen(false); setToast({ tone: "ok", text: `${n} alocări copiate și salvate.` }); await q.reload(); }} />
       )}
@@ -231,6 +236,30 @@ function Planning() {
         </div>
       )}
     </div>
+  );
+}
+
+/* ----------------------------- Detalii (doar citire) ----------------------------- */
+
+function AssignmentDetails({ a, d, tz, onClose }: { a: Assignment; d: PD; tz: string; onClose: () => void }) {
+  const p = d.projects.find((x) => x.id === a.project_id);
+  const e = d.employees.find((x) => x.id === a.employee_id);
+  const t = a.task_id ? d.tasks.find((x) => x.id === a.task_id) : undefined;
+  const st = ASSIGNMENT_STATUS[a.status];
+  const row = (label: string, value: React.ReactNode) => value ? (
+    <div className="flex gap-3 border-b border-slate-100 py-2 text-sm last:border-0">
+      <span className="w-24 shrink-0 text-slate-500">{label}</span><span className="font-medium text-slate-900">{value}</span>
+    </div>) : null;
+  return (
+    <Modal open onClose={onClose} title={p?.name ?? "Alocare"} footer={<Button onClick={onClose}>Închide</Button>}>
+      {row("Angajat", e?.full_name ?? "—")}
+      {row("Misiune", t?.name ?? "Fără misiune")}
+      {row("Data", prettyDate(localDate(a.starts_at, tz)))}
+      {row("Ora", `${localTime(a.starts_at, tz)}–${localTime(a.ends_at, tz)}`)}
+      {row("Status", <StatusBadge s={st} />)}
+      {row("Adresă", [p?.address, p?.city].filter(Boolean).join(", "))}
+      {row("Notă", a.notes)}
+    </Modal>
   );
 }
 
@@ -573,8 +602,8 @@ function MonthGrid({ date, from, to, assignments, projects, tz, onPick }: { date
 
 const ACTIVE_PROJECT = ["planificata", "in_desfasurare", "suspendata"];
 
-function JobGrid({ days, projects, assignments, onlyProject, location, employees, tasks, tz, onOpen, onMove, onPickDay }: {
-  days: string[]; projects: Project[]; assignments: Assignment[]; onlyProject: string; location: string;
+function JobGrid({ days, projects, assignments, onlyProject, location, employees, tasks, tz, onOpen, onMove, onPickDay, readOnly }: {
+  readOnly?: boolean; days: string[]; projects: Project[]; assignments: Assignment[]; onlyProject: string; location: string;
   employees: Map<string, Employee>; tasks: Map<string, import("@/lib/types").Task>; tz: string;
   onOpen: (a: Assignment) => void; onMove: (a: Assignment, s: Date, e: Date, emp: string, projectId?: string) => void; onPickDay: (d: string) => void;
 }) {
@@ -602,7 +631,7 @@ function JobGrid({ days, projects, assignments, onlyProject, location, employees
   }
   function onUp(a: Assignment) {
     const dr = drag; setDrag(null);
-    if (!dr || !dr.moved) { onOpen(a); return; }
+    if (!dr || !dr.moved || readOnly) { onOpen(a); return; }
     if (!dr.cell) return;
     const [pid, day] = dr.cell.split("|");
     if (pid === a.project_id && day === localDate(a.starts_at, tz)) return;
@@ -610,7 +639,7 @@ function JobGrid({ days, projects, assignments, onlyProject, location, employees
     onMove(a, m.startsAt, m.endsAt, a.employee_id, pid);
   }
 
-  if (rows.length === 0) return <Empty title="Nicio lucrare activă" action={<Link href="/lucrari?nou=1"><Button variant="primary">Adaugă lucrare</Button></Link>} />;
+  if (rows.length === 0) return <Empty title="Nicio lucrare activă" action={readOnly ? undefined : <Link href="/lucrari?nou=1"><Button variant="primary">Adaugă lucrare</Button></Link>} />;
 
   const single = days.length === 1;
   return (
@@ -630,7 +659,8 @@ function JobGrid({ days, projects, assignments, onlyProject, location, employees
           {rows.map(({ p }) => (
             <tr key={p.id} className="border-t border-slate-100 align-top">
               <td className="sticky left-0 z-10 bg-white py-2 pr-2 pl-3 md:px-3" style={{ boxShadow: `inset 4px 0 0 ${p.color}, 1px 0 0 #e2e8f0` }}>
-                <Link href={`/lucrari/${p.id}`} className="block text-[13px] font-semibold leading-tight hover:underline md:text-sm">{p.name}</Link>
+                {readOnly ? <div className="text-[13px] font-semibold leading-tight md:text-sm">{p.name}</div>
+                  : <Link href={`/lucrari/${p.id}`} className="block text-[13px] font-semibold leading-tight hover:underline md:text-sm">{p.name}</Link>}
                 {(p.city || p.address) && <div className="mt-0.5 flex items-start gap-1 text-xs text-slate-500"><MapPin className="mt-0.5 h-3 w-3 shrink-0" /><span className="line-clamp-2">{[p.address, p.city].filter(Boolean).join(", ")}</span></div>}
               </td>
               {days.map((day) => {
@@ -642,7 +672,7 @@ function JobGrid({ days, projects, assignments, onlyProject, location, employees
                     <div className="space-y-1">
                       {items.map((a) => {
                         const e = employees.get(a.employee_id);
-                        const isDrag = drag?.id === a.id && drag.moved;
+                        const isDrag = !readOnly && drag?.id === a.id && drag.moved;
                         return (
                           <div key={a.id} role="button" tabIndex={0} onKeyDown={(ev) => ev.key === "Enter" && onOpen(a)}
                             onPointerDown={(ev) => onDown(ev, a)} onPointerMove={onMoveEv} onPointerUp={() => onUp(a)}
@@ -653,10 +683,10 @@ function JobGrid({ days, projects, assignments, onlyProject, location, employees
                           </div>
                         );
                       })}
-                      <Link href={`/planning/aloca?lucrare=${p.id}&date=${day}`} aria-label={`Alocă la ${p.name} în ${shortDate(day)}`}
+                      {!readOnly && <Link href={`/planning/aloca?lucrare=${p.id}&date=${day}`} aria-label={`Alocă la ${p.name} în ${shortDate(day)}`}
                         className={cx("flex h-7 items-center justify-center rounded-md text-xs font-semibold text-slate-400 hover:bg-orange-50 hover:text-orange-700", items.length > 0 && "md:opacity-0 md:group-hover:opacity-100")}>
                         <Plus className="h-3.5 w-3.5" />{items.length === 0 ? <span className="ml-1">Alocă</span> : null}
-                      </Link>
+                      </Link>}
                     </div>
                   </td>
                 );
@@ -666,7 +696,7 @@ function JobGrid({ days, projects, assignments, onlyProject, location, employees
         </tbody>
       </table>
       <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
-        Fiecare rând e o lucrare; în fiecare zi apar angajații alocați. Atinge un nume pentru detalii. Pe desktop poți trage un nume în altă zi sau pe altă lucrare.
+        Fiecare rând e o lucrare; în fiecare zi apar angajații alocați. Atinge un nume pentru detalii.{readOnly ? "" : " Pe desktop poți trage un nume în altă zi sau pe altă lucrare."}
       </p>
     </div>
   );

@@ -6,7 +6,7 @@ import { Badge, Button, Card, Empty, ErrorBox, Input, Loading, PageHeader, Progr
 import { TaskProgressDialog } from "@/components/TaskProgressDialog";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
-import { byId, loadAbsences, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTeams } from "@/lib/data";
+import { byId, loadAbsences, loadAssignments, loadEmployees, loadProjects, loadScopeProjectIds, loadTasks, loadTeams } from "@/lib/data";
 import { availabilityFor } from "@/lib/conflicts";
 import { PROJECT_STATUS, TASK_STATUS } from "@/lib/labels";
 import { addDays, isoWeekday, localDate, localTime, prettyDate, rangeUtc, todayIn } from "@/lib/time";
@@ -23,18 +23,19 @@ function Echipa() {
 
   const q = useQuery(async () => {
     const [f, t] = rangeUtc(date, date, tz);
-    const [teams, employees, projects, tasks, assignments, absences] = await Promise.all([
-      loadTeams(), loadEmployees(), loadProjects(), loadTasks(), loadAssignments(f, t), loadAbsences(date, date),
+    const [teams, employees, allProjects, tasks, assignments, absences, scope] = await Promise.all([
+      loadTeams(), loadEmployees(), loadProjects(), loadTasks(), loadAssignments(f, t), loadAbsences(date, date), loadScopeProjectIds(),
     ]);
-    return { teams, employees, projects, tasks, assignments: assignments.filter((a) => a.status !== "anulata"), absences };
+    const projects = allProjects.filter((p) => scope.has(p.id));
+    return { teams, employees, projects, allProjects, tasks, assignments: assignments.filter((a) => a.status !== "anulata"), absences };
   }, [date, tz]);
 
   const d = q.data;
-  const projects = useMemo(() => byId(d?.projects), [d]);
+  const projects = useMemo(() => byId(d?.allProjects), [d]);
   const tasks = useMemo(() => byId(d?.tasks), [d]);
   const myTeams = (d?.teams ?? []).filter((t) => t.leader_employee_id === employee?.id);
   const members = (d?.employees ?? []).filter((e) => myTeams.some((t) => t.id === e.team_id));
-  // RLS întoarce doar lucrările de care răspunde șeful sau unde lucrează echipa lui.
+  // doar lucrările de care răspunde șeful sau unde lucrează echipa lui
   const ledProjects = (d?.projects ?? []).filter((p) => !["finalizata", "anulata"].includes(p.status));
 
   return (
