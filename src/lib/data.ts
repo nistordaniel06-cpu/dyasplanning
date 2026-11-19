@@ -1,7 +1,7 @@
 "use client";
 import { supabase } from "./supabase/client";
 import { must } from "./useQuery";
-import type { ExtraTrip, Absence, Assignment, Employee, OdometerReading, Project, Task, Team, TimeEntry, Vehicle } from "./types";
+import type { ExtraTrip, Trip, Absence, Assignment, Employee, OdometerReading, Project, Task, Team, TimeEntry, Vehicle } from "./types";
 
 const sb = () => supabase();
 
@@ -68,4 +68,8 @@ export async function loadScopeProjectIds(): Promise<Set<string>> {
 
 export async function loadExtraTrips(fromDate: string, toDate: string): Promise<ExtraTrip[]> {
   return must(await sb().from("extra_trips").select("*").gte("trip_date", fromDate).lte("trip_date", toDate).order("trip_date").order("created_at")) as ExtraTrip[];
+}
+
+export async function loadTrips(fromDate: string, toDate: string): Promise<Trip[]> {
+  return must(await sb().from("trips").select("*").gte("trip_date", fromDate).lte("trip_date", toDate).order("vehicle_id").order("seq")) as Trip[];
 }

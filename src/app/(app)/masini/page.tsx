@@ -5,6 +5,7 @@ import { AlertTriangle, Briefcase, Download, Home, MapPin, Navigation, Pencil, P
 import { RequireRole } from "@/components/shell";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, Tabs, Textarea } from "@/components/ui";
 import { PeriodPicker, presetRange, type Preset } from "@/components/PeriodPicker";
+import { TripsAdmin } from "@/components/TripsAdmin";
 import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
@@ -22,7 +23,7 @@ export default function MasiniPage() {
 function Masini() {
   const { tz } = useSession();
   const today = todayIn(tz);
-  const [tab, setTab] = useState<"km" | "masini">("km");
+  const [tab, setTab] = useState<"curse" | "km" | "masini">("curse");
   const [preset, setPreset] = useState<Preset>("luna");
   const [custom, setCustom] = useState<[string, string]>([today, today]);
   const [fVehicle, setFVehicle] = useState("");
@@ -33,10 +34,13 @@ function Masini() {
 
   // Se încarcă și citirile de după perioadă, ca ultima zi din perioadă să aibă km calculați.
   const q = useQuery(async () => {
-    const [vehicles, employees, readings, todayReadings, extras] = await Promise.all([
+    const sb = supabase();
+    const [vehicles, employees, readings, todayReadings, extras, oldCount] = await Promise.all([
       loadVehicles(), loadEmployees({ includeInactive: true }), loadOdometer(from, addDays(to, 31)), loadOdometer(today, today), loadExtraTrips(from, to),
+      Promise.all([sb.from("odometer_readings").select("id", { count: "exact", head: true }), sb.from("extra_trips").select("id", { count: "exact", head: true })])
+        .then(([a, b]) => (a.count ?? 0) + (b.count ?? 0)),
     ]);
-    return { vehicles, employees, readings, todayReadings, extras };
+    return { vehicles, employees, readings, todayReadings, extras, oldCount };
   }, [from, to, today]);
 
   const d = q.data;
@@ -71,22 +75,32 @@ function Masini() {
   return (
     <div>
       <PageHeader title="Mașini și kilometri" subtitle="Vizibil doar pentru administrator"
-        actions={tab === "km"
+        actions={tab === "curse" ? undefined : tab === "km"
           ? <>
               <Button onClick={exportCsv} disabled={rows.length === 0}><Download className="h-4 w-4" />CSV</Button>
               <Button variant="primary" onClick={() => setReadingForm({ reading: null })} disabled={!d || d.vehicles.length === 0}><Plus className="h-4 w-4" />Adaugă citire</Button>
             </>
           : <Button variant="primary" onClick={() => setVehicleForm({ vehicle: null })}><Plus className="h-4 w-4" />Adaugă mașină</Button>} />
 
-      <div className="mb-4"><Tabs value={tab} onChange={setTab} items={[{ value: "km", label: "Kilometri" }, { value: "masini", label: "Mașini" }]} /></div>
+      <div className="mb-4"><Tabs value={tab} onChange={setTab} items={[
+        { value: "curse", label: "Foaie de parcurs" }, { value: "masini", label: "Mașini" },
+        ...(d?.oldCount ? [{ value: "km" as const, label: "Citiri vechi" }] : []),
+      ]} /></div>
 
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}
       {q.loading && !d && <Loading />}
 
       {d && d.vehicles.length === 0 && (
         <Empty title="Nu ai adăugat încă nicio mașină" action={<Button variant="primary" onClick={() => setVehicleForm({ vehicle: null })}>Adaugă mașină</Button>}>
-          Adaugă mașinile firmei, apoi marchează șoferii din fișa angajatului („Șofer”). Ei vor introduce km din bord când ajung la muncă și când ajung acasă, din ecranul „Astăzi”.
+          Adaugă mașinile firmei, apoi marchează șoferii din fișa angajatului („Șofer”). Din ecranul „Astăzi” ei notează fiecare cursă: km din bord la plecare și la sosire.
         </Empty>
+      )}
+
+      {d && d.vehicles.length > 0 && tab === "curse" && (
+        <>
+          {drivers.length === 0 && <div className="mb-4"><Notice tone="blue">Niciun angajat nu este marcat ca șofer. Deschide fișa angajatului → Modifică → bifează „Șofer”.</Notice></div>}
+          <TripsAdmin vehicles={d.vehicles} employees={d.employees} />
+        </>
       )}
 
       {d && d.vehicles.length > 0 && tab === "km" && (

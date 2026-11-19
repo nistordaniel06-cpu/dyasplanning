@@ -5,7 +5,7 @@ import { Clock, MapPin, Navigation, Phone, Users } from "lucide-react";
 import { NeedsEmployee } from "@/components/shell";
 import { Badge, Button, Empty, ErrorBox, Loading, PageHeader, ProgressBar, StatusBadge } from "@/components/ui";
 import { TaskProgressDialog } from "@/components/TaskProgressDialog";
-import { OdometerCard } from "@/components/OdometerCard";
+import { TripCard } from "@/components/TripCard";
 import { ClockCard } from "@/components/ClockCard";
 import { AppSetupCard } from "@/components/AppSetup";
 import { useSession } from "@/lib/session";
@@ -45,7 +45,7 @@ function Astazi() {
     <div className="mx-auto max-w-2xl">
       <PageHeader title={`Bună, ${employee!.full_name.split(" ")[0]}!`} subtitle={prettyDate(today)} />
       <AppSetupCard compact />
-      <OdometerCard />
+      <TripCard />
       {d && <ClockCard assignments={mine} projects={projects} tasks={tasks} onChanged={q.reload} />}
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}
       {q.loading && !d && <Loading />}

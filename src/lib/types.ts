@@ -63,6 +63,26 @@ export interface Vehicle {
   created_at: string;
 }
 
+export interface Trip {
+  id: string;
+  company_id: string;
+  vehicle_id: string;
+  employee_id: string | null;
+  seq: number;
+  trip_date: string;
+  km_start: number;
+  km_end: number | null;
+  from_place: string;
+  to_place: string | null;
+  from_project_id: string | null;
+  to_project_id: string | null;
+  purpose: string | null;
+  private: boolean;
+  started_at: string;
+  ended_at: string | null;
+  gps_km: number | null;
+}
+
 export interface ExtraTrip {
   id: string;
   company_id: string;

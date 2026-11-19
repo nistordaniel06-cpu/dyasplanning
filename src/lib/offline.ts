@@ -11,6 +11,8 @@ export type QueuedOp =
   | { kind: "time_entry"; label: string; row: Record<string, unknown>; photos: Blob[]; meta: PhotoMeta }
   | { kind: "odometer"; label: string; args: Record<string, unknown> }
   | { kind: "extra_trip"; label: string; args: Record<string, unknown> }
+  | { kind: "trip_start"; label: string; args: Record<string, unknown> }
+  | { kind: "trip_end"; label: string; args: Record<string, unknown> }
   | { kind: "entry_photos"; label: string; entryId: string; photos: Blob[]; meta: PhotoMeta; lat?: number | null; lon?: number | null };
 type Stored = QueuedOp & { id?: number; createdAt: string };
 
@@ -88,6 +90,11 @@ async function run(op: QueuedOp): Promise<string | null> {
         const { p_date: _omit, ...rest } = op.args; void _omit;
         ({ error } = await sb.rpc("submit_odometer", rest));
       }
+      if (error) throw error;
+      return null;
+    }
+    case "trip_start": case "trip_end": {
+      const { error } = await sb.rpc(op.kind === "trip_start" ? "start_trip" : "end_trip", op.args);
       if (error) throw error;
       return null;
     }
