@@ -15,6 +15,8 @@ exact.update({
  "aprobate": "approved",
  ". Orele trimise și ciornele sunt afișate separat și nu sunt incluse în coloana „Aprobate”. Pontajele respinse nu se adună.": ". Submitted hours and drafts are shown separately and are not included in the “Approved” column. Rejected timesheets are not added up.",
  "Toată firma": "Whole company",
+ "Câți km": "How many km", "Din bord": "From dashboard", "Bord la plecare": "Dashboard at departure", "Bord la sosire": "Dashboard at arrival",
+ "Cel mai exact: lasă aplicația deschisă pe ecran. Poți folosi și Waze: cât timp Waze e deasupra, aplicația nu primește locația, iar când revii în ea completează drumul lipsă cu o estimare. La final poți corecta km de mână sau din bord.": "Most accurate: keep the app open on screen. You can also use Waze: while Waze is on top, the app gets no location, and when you come back it fills in the missing distance with an estimate. At the end you can correct the km by hand or from the dashboard.",
  "Km extra": "Extra km", "Scriu km": "Enter km", "Pornește GPS": "Start GPS", "Oprește traseul": "Stop the trip",
  "Pentru drumurile în afara traseului obișnuit (materiale, altă lucrare) sau când schimbi mașina.": "For trips outside the usual route (materials, another job) or when you switch cars.",
  "Traseu GPS terminat": "GPS trip finished", "Adaugă km extra": "Add extra km", "Km făcuți": "Km driven", "Traseu / motiv (opțional)": "Route / reason (optional)",

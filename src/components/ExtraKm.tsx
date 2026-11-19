@@ -7,9 +7,9 @@ import { useQuery, must } from "@/lib/useQuery";
 import { humanError } from "@/lib/errors";
 import { localeTag } from "@/lib/lang";
 import { runOrQueue } from "@/lib/offline";
-import { addPoint, kmOf, loadTrip, saveTrip, MAX_ACCURACY_M, type TripState } from "@/lib/gpsTrip";
+import { addPoint, estKmOf, kmOf, loadTrip, saveTrip, MAX_ACCURACY_M, type TripState } from "@/lib/gpsTrip";
 import type { Vehicle } from "@/lib/types";
-import { Button, ErrorBox, Field, Input, Notice, Select } from "./ui";
+import { Button, ErrorBox, Field, Input, Notice, Select, Tabs } from "./ui";
 
 interface Trip { id: string; vehicle_id: string; km: number; note: string | null; source: "manual" | "gps"; created_at: string }
 
@@ -21,7 +21,7 @@ type WakeLock = { release: () => Promise<void> };
 export function ExtraKm({ employeeId, today, vehicles, selected }: { employeeId: string; today: string; vehicles: Vehicle[]; selected: string }) {
   const q = useQuery(async () => must(await supabase().from("extra_trips").select("id, vehicle_id, km, note, source, created_at")
     .eq("employee_id", employeeId).eq("trip_date", today).order("created_at")) as Trip[], [employeeId, today]);
-  const [form, setForm] = useState<null | { vehicleId: string; km: string; note: string; gps?: TripState; endedAt?: number }>(null);
+  const [form, setForm] = useState<null | { vehicleId: string; km: string; note: string; mode: "km" | "bord"; from: string; to: string; gps?: TripState; endedAt?: number }>(null);
   const [trip, setTrip] = useState<TripState | null>(null);
   const [gpsMsg, setGpsMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -79,18 +79,30 @@ export function ExtraKm({ employeeId, today, vehicles, selected }: { employeeId:
   function stopGps() {
     if (!trip) return;
     const endedAt = Date.now();
-    setForm({ vehicleId: trip.vehicleId, km: String(kmOf(trip)), note: "", gps: trip, endedAt });
+    setForm({ vehicleId: trip.vehicleId, km: String(kmOf(trip)).replace(".", ","), note: "", mode: "km", from: "", to: "", gps: trip, endedAt });
     saveTrip(employeeId, null); setTrip(null); setGpsMsg(null);
   }
 
   async function save() {
     if (!form) return;
-    const km = Number(form.km.replace(",", "."));
-    if (!Number.isFinite(km) || km <= 0) { setError(form.gps ? "Traseul are 0 km — n-a fost măsurat niciun drum." : "Scrie câți km ai făcut."); return; }
+    let km = Number(form.km.replace(",", "."));
+    const parts: string[] = [];
+    if (form.mode === "bord") {
+      const a = Number(form.from), b = Number(form.to);
+      if (!form.from || !form.to || !(b > a)) { setError("Scrie km din bord la plecare și la sosire (sosirea trebuie să fie mai mare)."); return; }
+      km = b - a; parts.push(`bord ${a.toLocaleString(localeTag())} → ${b.toLocaleString(localeTag())}`);
+    }
+    if (!Number.isFinite(km) || km <= 0) { setError(form.gps ? "Traseul are 0 km — scrie km de mână sau din bord." : "Scrie câți km ai făcut."); return; }
+    // GPS păstrat doar dacă șoferul n-a schimbat cifra măsurată
+    const measured = form.gps ? kmOf(form.gps) : null;
+    const isGps = measured !== null && form.mode === "km" && Math.abs(km - measured) < 0.05;
+    if (form.gps && !isGps) parts.push(`GPS a măsurat ${fmtKm(measured!)}`);
+    if (isGps && form.gps && estKmOf(form.gps) >= 0.5) parts.push(`din care ~${fmtKm(estKmOf(form.gps))} estimați (aplicația în fundal)`);
+    const note = [form.note.trim(), ...parts].filter(Boolean).join(" · ") || null;
     setBusy(true); setError(null);
     try {
       const r = await runOrQueue({ kind: "extra_trip", label: `Km extra ${km}`, args: {
-        p_vehicle_id: form.vehicleId, p_km: km, p_note: form.note.trim() || null, p_source: form.gps ? "gps" : "manual",
+        p_vehicle_id: form.vehicleId, p_km: km, p_note: note, p_source: isGps ? "gps" : "manual",
         p_started_at: form.gps ? new Date(form.gps.startedAt).toISOString() : null,
         p_ended_at: form.endedAt ? new Date(form.endedAt).toISOString() : null, p_date: today,
       } });
@@ -142,8 +154,9 @@ export function ExtraKm({ employeeId, today, vehicles, selected }: { employeeId:
           <div className="flex items-center gap-2 text-sm font-semibold text-blue-800"><MapPin className="h-4 w-4 animate-pulse" />Traseu GPS pornit · {carLabel(byId.get(trip.vehicleId))}</div>
           <div className="text-4xl font-bold tabular-nums">{fmtKm(kmOf(trip))}</div>
           <div className="text-sm text-slate-600 tabular-nums">{Math.floor(elapsed / 3600)}h {String(Math.floor(elapsed / 60) % 60).padStart(2, "0")}m {String(elapsed % 60).padStart(2, "0")}s</div>
+          {estKmOf(trip) > 0 && <p className="text-sm text-slate-700">din care ~{fmtKm(estKmOf(trip))} estimați cât aplicația a stat în fundal</p>}
           {gpsMsg && <p className="text-sm text-amber-800">{gpsMsg}</p>}
-          <p className="text-xs text-slate-600">Ține aplicația deschisă pe ecran cât conduci. Dacă închizi aplicația sau se stinge ecranul, km din acel timp nu se numără.</p>
+          <p className="text-xs text-slate-600">Cel mai exact: lasă aplicația deschisă pe ecran. Poți folosi și Waze: cât timp Waze e deasupra, aplicația nu primește locația, iar când revii în ea completează drumul lipsă cu o estimare. La final poți corecta km de mână sau din bord.</p>
           <Button size="lg" variant="danger" className="w-full" onClick={stopGps}><Square className="h-4 w-4" />Oprește traseul</Button>
         </div>
       )}
@@ -158,9 +171,20 @@ export function ExtraKm({ employeeId, today, vehicles, selected }: { employeeId:
               </Select>
             </Field>
           )}
-          {form.gps
-            ? <div className="text-3xl font-bold tabular-nums">{fmtKm(Number(form.km))}<span className="ml-2 text-sm font-normal text-slate-600">măsurați cu GPS</span></div>
-            : <Field label="Km făcuți"><Input inputMode="decimal" placeholder="ex. 35" value={form.km} onChange={(e) => setForm({ ...form, km: e.target.value.replace(/[^\d.,]/g, "") })} className="h-12 text-xl font-bold tabular-nums" /></Field>}
+          {form.gps && (
+            <p className="text-sm text-slate-700">GPS-ul a măsurat <strong className="tabular-nums">{fmtKm(kmOf(form.gps))}</strong>
+              {estKmOf(form.gps) > 0 ? <> (din care ~{fmtKm(estKmOf(form.gps))} estimați)</> : null}. Dacă nu e corect, schimbă cifra sau scrie km din bord.</p>
+          )}
+          <Tabs value={form.mode} onChange={(m) => setForm({ ...form, mode: m })} items={[{ value: "km", label: "Câți km" }, { value: "bord", label: "Din bord" }]} />
+          {form.mode === "km"
+            ? <Field label="Km făcuți"><Input inputMode="decimal" placeholder="ex. 35" value={form.km} onChange={(e) => setForm({ ...form, km: e.target.value.replace(/[^\d.,]/g, "") })} className="h-12 text-xl font-bold tabular-nums" /></Field>
+            : (
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Bord la plecare"><Input inputMode="numeric" placeholder="ex. 124580" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value.replace(/[^\d]/g, "") })} className="tabular-nums" /></Field>
+                <Field label="Bord la sosire"><Input inputMode="numeric" placeholder="ex. 124615" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value.replace(/[^\d]/g, "") })} className="tabular-nums" /></Field>
+                {Number(form.to) > Number(form.from) && form.from && <p className="col-span-2 text-sm">= <strong className="tabular-nums">{fmtKm(Number(form.to) - Number(form.from))}</strong></p>}
+              </div>
+            )}
           <Field label="Traseu / motiv (opțional)"><Input placeholder="ex. Dedeman Militari → Vila Otopeni" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
           {error && <ErrorBox message={error} />}
           <div className="flex gap-2">
@@ -172,7 +196,7 @@ export function ExtraKm({ employeeId, today, vehicles, selected }: { employeeId:
 
       {!trip && !form && (
         <div className="grid grid-cols-2 gap-2">
-          <Button onClick={() => { setForm({ vehicleId: selected, km: "", note: "" }); setError(null); }}><Plus className="h-4 w-4" />Scriu km</Button>
+          <Button onClick={() => { setForm({ vehicleId: selected, km: "", note: "", mode: "km", from: "", to: "" }); setError(null); }}><Plus className="h-4 w-4" />Scriu km</Button>
           <Button variant="primary" onClick={startGps}><Navigation className="h-4 w-4" />Pornește GPS</Button>
         </div>
       )}

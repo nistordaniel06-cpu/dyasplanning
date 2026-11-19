@@ -41,6 +41,10 @@ with sync_playwright() as p:
     i.get_by_label("Km făcuți").fill("35"); i.get_by_label("Traseu / motiv (opțional)").fill("Dedeman Militari")
     i.get_by_role("button", name="Salvează km extra").click()
     expect(i.get_by_text("Dedeman Militari")).to_be_visible(); ok("km extra scriși de mână")
+    i.get_by_role("button", name="Scriu km").click(); i.get_by_role("tab", name="Din bord").click()
+    i.get_by_label("Bord la plecare").fill("100010"); i.get_by_label("Bord la sosire").fill("100052"); i.get_by_label("Traseu / motiv (opțional)").fill("Depozit Chiajna")
+    expect(i.get_by_text("= 42 km")).to_be_visible(); i.get_by_role("button", name="Salvează km extra").click()
+    expect(i.get_by_text(re.compile("Depozit Chiajna · bord"))).to_be_visible(); expect(i.get_by_text("Azi: 77 km")).to_be_visible(); ok("km extra din bord (plecare → sosire)")
     # traseu GPS: ~1 km pe minut, 5 puncte
     i.get_by_role("button", name="Pornește GPS").click(); expect(i.get_by_text("Traseu GPS pornit")).to_be_visible()
     i.wait_for_timeout(1500)
@@ -53,7 +57,8 @@ with sync_playwright() as p:
     # traseul continuă după redeschiderea aplicației
     i.reload(); expect(i.get_by_text("Traseu GPS pornit")).to_be_visible(); ok(f"traseul GPS numără km ({txt}) și continuă după redeschidere")
     i.get_by_role("button", name="Oprește traseul").click()
-    expect(i.get_by_text("Traseu GPS terminat")).to_be_visible(); i.get_by_label("Traseu / motiv (opțional)").fill("Vila Otopeni → depozit")
+    expect(i.get_by_text("Traseu GPS terminat")).to_be_visible(); expect(i.get_by_label("Km făcuți")).to_have_value(re.compile(r"^0,[56]$"))
+    i.get_by_label("Traseu / motiv (opțional)").fill("Vila Otopeni → depozit")
     i.get_by_role("button", name="Salvează km extra").click(); expect(i.get_by_text("Vila Otopeni → depozit")).to_be_visible()
     i.screenshot(path="shots/71_km_extra.png", full_page=True); ok("traseul GPS salvat ca km extra")
     # adminul vede
