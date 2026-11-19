@@ -11,7 +11,7 @@ type Row = Record<string, unknown>;
 /** Tabelele firmei (RLS lasă adminul să le citească pe toate). */
 export const TABLES = [
   "companies", "teams", "employees", "employee_private", "memberships", "projects", "tasks", "assignments",
-  "time_entries", "time_entry_photos", "absences", "vehicles", "odometer_readings", "notes",
+  "time_entries", "time_entry_photos", "absences", "vehicles", "odometer_readings", "extra_trips", "notes",
   "chat_channels", "chat_messages",
 ] as const;
 export type TableName = (typeof TABLES)[number];
@@ -44,7 +44,7 @@ export async function collect(onProgress?: (msg: string) => void): Promise<Backu
 export const LABEL: Record<TableName, string> = {
   companies: "Firma", teams: "Echipe", employees: "Angajați", employee_private: "Adrese", memberships: "Conturi",
   projects: "Lucrări", tasks: "Misiuni", assignments: "Program", time_entries: "Pontaje", time_entry_photos: "Poze pontaj",
-  absences: "Absențe", vehicles: "Mașini", odometer_readings: "Km mașini", notes: "Observații",
+  absences: "Absențe", vehicles: "Mașini", odometer_readings: "Km mașini", extra_trips: "Km extra", notes: "Observații",
   chat_channels: "Conversații", chat_messages: "Mesaje chat",
 };
 
@@ -99,6 +99,9 @@ export function sheets(d: BackupData, tz: string): Sheet[] {
       rows: [...d.odometer_readings].sort((a, b) => s(a.reading_date).localeCompare(s(b.reading_date)) || (a.kind === "acasa" ? 1 : -1))
         .map((r) => [ro(r.reading_date), KIND_LABEL[(r.kind as "munca" | "acasa") ?? "munca"], r.recorded_at ? localTime(s(r.recorded_at), tz) : "",
           name(veh, r.vehicle_id), name(veh, r.vehicle_id, "plate"), name(emp, r.employee_id, "full_name"), Number(r.km), s(r.note)]) },
+    { name: "Km extra", columns: ["Data", "Mașina", "Nr. înmatriculare", "Șofer", "Km", "Sursa", "Început", "Sfârșit", "Traseu / motiv"], widths: [12, 22, 16, 24, 8, 8, 8, 8, 40],
+      rows: sortBy(d.extra_trips ?? [], "created_at").map((x) => [ro(x.trip_date), name(veh, x.vehicle_id), name(veh, x.vehicle_id, "plate"), name(emp, x.employee_id, "full_name"),
+        Number(x.km), x.source === "gps" ? "GPS" : "manual", x.started_at ? localTime(s(x.started_at), tz) : "", x.ended_at ? localTime(s(x.ended_at), tz) : "", s(x.note)]) },
     { name: "Observații", columns: ["Data", "Lucrare", "Misiune", "Autor", "Text"], widths: [12, 30, 24, 20, 60],
       rows: sortBy(d.notes, "created_at").map((n) => [ro(localDate(s(n.created_at), tz)), name(proj, n.project_id), name(task, n.task_id), s(n.author_name), s(n.body)]) },
   ];
@@ -173,6 +176,6 @@ export async function zipBlob(d: BackupData, tz: string, companyName: string, op
 }
 
 export function counts(d: BackupData): { label: string; n: number }[] {
-  return (["employees", "projects", "tasks", "assignments", "time_entries", "absences", "vehicles", "odometer_readings", "notes", "chat_messages", "time_entry_photos"] as TableName[])
+  return (["employees", "projects", "tasks", "assignments", "time_entries", "absences", "vehicles", "odometer_readings", "extra_trips", "notes", "chat_messages", "time_entry_photos"] as TableName[])
     .map((t) => ({ label: LABEL[t], n: d[t].length }));
 }

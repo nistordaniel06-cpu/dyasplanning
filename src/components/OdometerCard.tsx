@@ -12,6 +12,8 @@ import type { OdometerKind, Vehicle } from "@/lib/types";
 import { Button, ErrorBox, Field, Input, Loading, Notice, Select, cx } from "./ui";
 import { runOrQueue } from "@/lib/offline";
 import { todayIn } from "@/lib/time";
+import { loadTodayCar, saveTodayCar } from "@/lib/gpsTrip";
+import { ExtraKm } from "./ExtraKm";
 
 interface Today { vehicle_id: string; vehicle_name: string; plate: string | null; km: number; reading_date: string; kind?: OdometerKind | null; recorded_at?: string | null }
 
@@ -40,7 +42,10 @@ export function OdometerCard() {
 
   if (!employee?.is_driver) return null;
   const d = q.data;
-  const selected = vehicleId || employee.default_vehicle_id || d?.today[0]?.vehicle_id || d?.vehicles[0]?.id || "";
+  const today = todayIn(tz);
+  const remembered = loadTodayCar(employee.id, today);
+  const valid = (id: string | null | undefined) => (id && d?.vehicles.some((v) => v.id === id) ? id : "");
+  const selected = valid(vehicleId) || valid(remembered) || valid(employee.default_vehicle_id) || d?.today[0]?.vehicle_id || d?.vehicles[0]?.id || "";
   const doneFor = (k: OdometerKind) => d?.today.find((t) => t.vehicle_id === selected && (t.kind ?? "munca") === k);
   const savedKm = (k: OdometerKind) => offline[k] ?? doneFor(k)?.km;
   // următorul moment de completat: întâi „la muncă”, apoi „acasă”
@@ -82,8 +87,8 @@ export function OdometerCard() {
         {d && d.vehicles.length > 0 && (
           <>
             {d.vehicles.length > 1 ? (
-              <Field label="Mașina">
-                <Select value={selected} onChange={(e) => { setVehicleId(e.target.value); setEditing(null); }}>
+              <Field label="Mașina pe care o conduci azi" hint="Alege din listă. Dacă schimbi mașina, alege-o pe cea nouă înainte să scrii km.">
+                <Select value={selected} onChange={(e) => { setVehicleId(e.target.value); saveTodayCar(employee.id, today, e.target.value); setEditing(null); }}>
                   {d.vehicles.map((v) => <option key={v.id} value={v.id}>{v.name}{v.plate ? ` · ${v.plate}` : ""}</option>)}
                 </Select>
               </Field>
@@ -129,6 +134,8 @@ export function OdometerCard() {
                 </div>
               </div>
             )}
+
+            <ExtraKm employeeId={employee.id} today={today} vehicles={d.vehicles} selected={selected} />
           </>
         )}
       </div>

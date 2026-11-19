@@ -10,6 +10,7 @@ export type QueuedOp =
   | { kind: "clock_out"; label: string; args: Record<string, unknown>; photos: Blob[]; meta: PhotoMeta }
   | { kind: "time_entry"; label: string; row: Record<string, unknown>; photos: Blob[]; meta: PhotoMeta }
   | { kind: "odometer"; label: string; args: Record<string, unknown> }
+  | { kind: "extra_trip"; label: string; args: Record<string, unknown> }
   | { kind: "entry_photos"; label: string; entryId: string; photos: Blob[]; meta: PhotoMeta; lat?: number | null; lon?: number | null };
 type Stored = QueuedOp & { id?: number; createdAt: string };
 
@@ -87,6 +88,11 @@ async function run(op: QueuedOp): Promise<string | null> {
         const { p_date: _omit, ...rest } = op.args; void _omit;
         ({ error } = await sb.rpc("submit_odometer", rest));
       }
+      if (error) throw error;
+      return null;
+    }
+    case "extra_trip": {
+      const { error } = await sb.rpc("add_extra_trip", op.args);
       if (error) throw error;
       return null;
     }

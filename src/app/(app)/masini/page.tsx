@@ -1,7 +1,7 @@
 "use client";
 import { localeTag } from "@/lib/lang";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Briefcase, Download, Home, MapPin, Pencil, Plus } from "lucide-react";
+import { AlertTriangle, Briefcase, Download, Home, MapPin, Navigation, Pencil, Plus, Trash2 } from "lucide-react";
 import { RequireRole } from "@/components/shell";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, Notice, PageHeader, Select, Tabs, Textarea } from "@/components/ui";
 import { PeriodPicker, presetRange, type Preset } from "@/components/PeriodPicker";
@@ -9,11 +9,11 @@ import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
-import { byId, loadEmployees, loadOdometer, loadVehicles } from "@/lib/data";
+import { byId, loadEmployees, loadExtraTrips, loadOdometer, loadVehicles } from "@/lib/data";
 import { KIND_LABEL, formatKm, segmentLabel, sumBy, withDistances, type ReadingWithDistance } from "@/lib/odometer";
 import { downloadText, toCsv } from "@/lib/reports";
 import { addDays, shortDate, todayIn } from "@/lib/time";
-import type { Employee, OdometerKind, OdometerReading, Vehicle } from "@/lib/types";
+import type { Employee, ExtraTrip, OdometerKind, OdometerReading, Vehicle } from "@/lib/types";
 
 export default function MasiniPage() {
   return <RequireRole roles={["admin"]}><Masini /></RequireRole>;
@@ -33,10 +33,10 @@ function Masini() {
 
   // Se încarcă și citirile de după perioadă, ca ultima zi din perioadă să aibă km calculați.
   const q = useQuery(async () => {
-    const [vehicles, employees, readings, todayReadings] = await Promise.all([
-      loadVehicles(), loadEmployees({ includeInactive: true }), loadOdometer(from, addDays(to, 31)), loadOdometer(today, today),
+    const [vehicles, employees, readings, todayReadings, extras] = await Promise.all([
+      loadVehicles(), loadEmployees({ includeInactive: true }), loadOdometer(from, addDays(to, 31)), loadOdometer(today, today), loadExtraTrips(from, to),
     ]);
-    return { vehicles, employees, readings, todayReadings };
+    return { vehicles, employees, readings, todayReadings, extras };
   }, [from, to, today]);
 
   const d = q.data;
@@ -45,6 +45,8 @@ function Masini() {
   const rows = useMemo(() => withDistances(d?.readings ?? [])
     .filter((r) => r.reading_date >= from && r.reading_date <= to)
     .filter((r) => (!fVehicle || r.vehicle_id === fVehicle) && (!fDriver || r.employee_id === fDriver)), [d, from, to, fVehicle, fDriver]);
+  const extras = useMemo(() => (d?.extras ?? []).filter((x) => (!fVehicle || x.vehicle_id === fVehicle) && (!fDriver || x.employee_id === fDriver)), [d, fVehicle, fDriver]);
+  const extraTotal = extras.reduce((a, x) => a + Number(x.km), 0);
   const byVehicle = sumBy(rows, (r) => r.vehicle_id);
   const byDriver = sumBy(rows, (r) => r.employee_id ?? "");
   const total = [...byVehicle.values()].reduce((a, b) => a + b, 0);
@@ -58,7 +60,10 @@ function Masini() {
       [...rows].reverse().map((r) => [
         r.reading_date, KIND_LABEL[r.kind ?? "munca"], vehicles.get(r.vehicle_id)?.name ?? "", vehicles.get(r.vehicle_id)?.plate ?? "",
         r.employee_id ? employees.get(r.employee_id)?.full_name ?? "" : "", r.km, r.distance ?? "", segmentLabel(r), r.nextDate ?? "", r.note ?? "",
-      ]),
+      ]).concat([...extras].reverse().map((x) => [
+        x.trip_date, x.source === "gps" ? "Km extra (GPS)" : "Km extra", vehicles.get(x.vehicle_id)?.name ?? "", vehicles.get(x.vehicle_id)?.plate ?? "",
+        x.employee_id ? employees.get(x.employee_id)?.full_name ?? "" : "", "", Number(x.km), "traseu extra", "", x.note ?? "",
+      ])),
     );
     downloadText(`dyasplanning_km_${from}_${to}.csv`, csv);
   }
@@ -136,6 +141,7 @@ function Masini() {
           {rows.length === 0 ? <Empty title="Nicio citire în perioada aleasă" /> : (
             <ReadingsTable rows={rows} vehicles={vehicles} employees={employees} onEdit={(r) => setReadingForm({ reading: r })} />
           )}
+          <ExtraTrips rows={extras} total={extraTotal} vehicles={vehicles} employees={employees} onChanged={q.reload} />
           <p className="text-xs text-slate-500">Șoferul scrie km de pe bord când ajunge la muncă și când ajunge acasă. Km parcurși = citirea următoare − citirea curentă: „muncă → acasă” e ziua de lucru plus drumul spre casă, „acasă → muncă” e drumul de dimineață.</p>
         </div>
       )}
@@ -159,6 +165,36 @@ function Masini() {
       {readingForm && d && <ReadingForm reading={readingForm.reading} vehicles={d.vehicles} employees={d.employees} onClose={() => setReadingForm(null)} onSaved={async () => { setReadingForm(null); await q.reload(); }} />}
       {vehicleForm && <VehicleForm vehicle={vehicleForm.vehicle} onClose={() => setVehicleForm(null)} onSaved={async () => { setVehicleForm(null); await q.reload(); }} />}
     </div>
+  );
+}
+
+function ExtraTrips({ rows, total, vehicles, employees, onChanged }: { rows: ExtraTrip[]; total: number; vehicles: Map<string, Vehicle>; employees: Map<string, Employee>; onChanged: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  async function remove(x: ExtraTrip) {
+    if (!confirm(`Ștergi traseul de ${formatKm(Number(x.km))}?`)) return;
+    const { error: e } = await supabase().from("extra_trips").delete().eq("id", x.id);
+    if (e) setError(humanError(e)); else onChanged();
+  }
+  const time = (v: string | null) => (v ? new Date(v).toLocaleTimeString(localeTag(), { hour: "2-digit", minute: "2-digit" }) : "");
+  return (
+    <Card title={`Km extra în perioadă: ${formatKm(total)}`}>
+      <p className="-mt-1 mb-2 text-xs text-slate-500">Trasee în afara drumului obișnuit, scrise de șofer sau măsurate cu GPS-ul telefonului. Sunt separate de km din bord.</p>
+      {error && <ErrorBox message={error} />}
+      {rows.length === 0 ? <p className="text-sm text-slate-500">Niciun traseu extra.</p> : (
+        <ul className="divide-y divide-slate-100 text-sm">
+          {[...rows].reverse().map((x) => (
+            <li key={x.id} className="flex items-center gap-3 py-2">
+              {x.source === "gps" ? <Navigation className="h-4 w-4 shrink-0 text-blue-600" aria-label="GPS" /> : <Plus className="h-4 w-4 shrink-0 text-slate-400" />}
+              <div className="min-w-0 flex-1">
+                <div><strong className="tabular-nums">{formatKm(Number(x.km))}</strong> · {vehicles.get(x.vehicle_id)?.name ?? "Mașină"} · {x.employee_id ? employees.get(x.employee_id)?.full_name : "—"}</div>
+                <div className="text-xs text-slate-500">{shortDate(x.trip_date)}{x.source === "gps" && x.started_at ? ` · GPS ${time(x.started_at)}–${time(x.ended_at)}` : ""}{x.note ? ` · ${x.note}` : ""}</div>
+              </div>
+              <button type="button" onClick={() => remove(x)} className="rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label="Șterge"><Trash2 className="h-4 w-4" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
 

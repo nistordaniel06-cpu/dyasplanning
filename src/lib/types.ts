@@ -63,6 +63,20 @@ export interface Vehicle {
   created_at: string;
 }
 
+export interface ExtraTrip {
+  id: string;
+  company_id: string;
+  vehicle_id: string;
+  employee_id: string | null;
+  trip_date: string;
+  km: number;
+  note: string | null;
+  source: "manual" | "gps";
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+}
+
 export interface OdometerReading {
   id: string;
   company_id: string;
