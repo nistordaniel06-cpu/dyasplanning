@@ -29,6 +29,15 @@ function salesLink(): string | null {
   return n.length >= 8 ? `https://wa.me/${n}?text=${encodeURIComponent(WA_TEXT)}` : null;
 }
 
+const ROLES = [
+  { video: "/prezentare/dyas-planning-angajati.mp4", poster: "/prezentare/coperta-angajati.jpg", duration: "42 s", who: "Pentru angajați",
+    title: "Andrei știe unde lucrează și ce are de făcut", label: "Film pentru angajați",
+    points: ["Dimineața vede lucrarea, ora și misiunea lui.", "Notează lucrul extra cerut de client, cu poză.", "Seara își trimite orele din telefon."] },
+  { video: "/prezentare/dyas-planning-sefi-de-echipa.mp4", poster: "/prezentare/coperta-sefi.jpg", duration: "44 s", who: "Pentru șefii de echipă",
+    title: "Mihai ține ordinea pe șantier", label: "Film pentru șefi de echipă",
+    points: ["Vede cine din echipă lucrează azi și unde.", "Actualizează progresul fiecărei sarcini.", "Corectează și validează orele echipei, cu motiv."] },
+];
+
 const STEPS = [
   { img: "/prezentare/ecran-1-planul-zilei.jpg", title: "Dimineața: cine merge unde?", text: "Vezi pe un singur ecran fiecare șantier și oamenii trimiși acolo azi — Elena la Grozăvești, Andrei și Mihai în Militari." },
   { img: "/prezentare/ecran-2-sarcini.jpg", title: "Pe șantier: cine ce face?", text: "Pe aceeași lucrare, fiecare om primește sarcina lui: Andrei montează pereții de gips-carton, Mihai pregătește instalația electrică." },
@@ -70,6 +79,24 @@ export default function PrezentarePage() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      {/* Câte un film pentru fiecare rol */}
+      <section className="mx-auto max-w-5xl px-5 py-12">
+        <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Și pentru oamenii din echipă</h2>
+        <p className="mt-2 text-slate-700">Fiecare vede în aplicație doar ce îi trebuie. Două filme scurte, filmate pe telefon, cu date de exemplu.</p>
+        <div className="mt-8 grid gap-12 sm:grid-cols-2 sm:gap-8">
+          {ROLES.map((r) => (
+            <article key={r.video}>
+              <p className="text-sm font-bold uppercase tracking-wide text-orange-700">{r.who}</p>
+              <h3 className="mt-1 text-xl font-bold">{r.title}</h3>
+              <ul className="mt-3 space-y-1.5 text-slate-700">
+                {r.points.map((p) => <li key={p} className="flex gap-2"><span aria-hidden className="text-orange-600">✓</span>{p}</li>)}
+              </ul>
+              <div className="mt-5"><DemoPlayer src={r.video} poster={r.poster} duration={r.duration} label={r.label} ariaLabel={`${r.who}: ${r.title}`} vertical /></div>
+            </article>
+          ))}
         </div>
       </section>
 
