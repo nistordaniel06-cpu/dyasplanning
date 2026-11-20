@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { SUPABASE_KEY, SUPABASE_URL, isConfigured } from "@/lib/supabase/env";
 
-const PUBLIC_PATHS = ["/login", "/configurare", "/firma-noua-5lo4x0", "/api/push", "/api/presence", "/api/owner-email", "/api/geocode", "/app/", "/api/manifest", "/api/icon"];
+const PUBLIC_PATHS = ["/login", "/configurare", "/firma-noua-5lo4x0", "/api/push", "/api/presence", "/api/owner-email", "/api/geocode", "/app/", "/api/manifest", "/api/icon", "/prezentare"];
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -38,5 +38,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|sw.js|manifest.webmanifest|.*\\.(?:png|jpg|svg|ico|js|json)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|sw.js|manifest.webmanifest|.*\\.(?:png|jpg|svg|ico|js|json|mp4)$).*)"],
 };

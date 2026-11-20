@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ro" suppressHydrationWarning>
       <head>
         {/* limba engleză: ascunde pagina până se aplică traducerea (fără „flash” în română) */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var l=localStorage.getItem("dyas.lang");if(!l){var n=(navigator.language||"ro").toLowerCase();l=(n.indexOf("ro")===0||n.indexOf("mo")===0)?"ro":"en";}if(l==="en"){var d=document.documentElement;d.lang="en";d.classList.add("i18n-pending");setTimeout(function(){d.classList.remove("i18n-pending")},2500);}}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{if(location.pathname.indexOf("/prezentare")===0)return;var l=localStorage.getItem("dyas.lang");if(!l){var n=(navigator.language||"ro").toLowerCase();l=(n.indexOf("ro")===0||n.indexOf("mo")===0)?"ro":"en";}if(l==="en"){var d=document.documentElement;d.lang="en";d.classList.add("i18n-pending");setTimeout(function(){d.classList.remove("i18n-pending")},2500);}}catch(e){}})();` }} />
         {/* culorile aplicației firmei, aplicate înainte de afișare */}
         <script dangerouslySetInnerHTML={{ __html: BRAND_BOOT_SCRIPT }} />
       </head>
