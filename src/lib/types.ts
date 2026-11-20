@@ -7,6 +7,7 @@ export type AbsenceType = "concediu" | "medical" | "absent" | "alt_motiv";
 
 export interface Company {
   id: string;
+  fuel_reminders?: boolean;
   name: string;
   timezone: string;
   travel_buffer_minutes: number;

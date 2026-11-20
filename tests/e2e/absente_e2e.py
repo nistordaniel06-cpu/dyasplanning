@@ -1,0 +1,51 @@
+import re, json, subprocess
+from playwright.sync_api import sync_playwright, expect
+B="http://localhost:3000"; probs=[]
+def ok(m): print("✓", m, flush=True)
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path=__import__("os").environ.get("CHROME", "/usr/bin/google-chrome"), args=["--no-sandbox"])
+    def ctx(w=390,h=844,mobile=True):
+        c=b.new_context(viewport={"width":w,"height":h}, is_mobile=mobile, has_touch=mobile, locale="ro-RO", timezone_id="Europe/Bucharest")
+        c.add_init_script("try{localStorage.getItem('dyas.loc')||localStorage.setItem('dyas.loc','no:'+Date.now());localStorage.getItem('dyas.push')||localStorage.setItem('dyas.push','no:'+Date.now())}catch(e){}"); pg=c.new_page(); pg.set_default_timeout(15000)
+        pg.on("pageerror", lambda e: probs.append(f"pageerror {e}"))
+        pg.on("console", lambda m: m.type=="error" and not re.search(r"WebSocket|realtime|Failed to load resource", m.text) and probs.append(m.text))
+        return pg
+    def sql(q): return subprocess.run(["psql","-h","/tmp","-p","5433","-U","postgres","-d","dyas_e2e","-qtAc",q], check=True, capture_output=True, text=True).stdout.strip()
+    a=ctx(1280,900,False)
+    a.goto(B+"/firma-noua-5lo4x0")
+    a.get_by_label("Email").fill("patron@firma.ro"); a.get_by_label("Parolă").fill("parola1234"); a.get_by_role("button", name="Creează cont").click()
+    a.wait_for_url(re.compile("/onboarding")); a.get_by_role("tab", name="Înființez firma").click()
+    a.get_by_label("Numele firmei").fill("Construct Test SRL"); a.get_by_label("Numele tău").fill("Dan Patron"); a.get_by_role("button", name="Creează firma").click()
+    a.wait_for_url(re.compile("/dashboard"))
+    a.goto(B+"/angajati"); a.get_by_role("button", name="Adaugă angajat").first.click()
+    d=a.get_by_role("dialog"); d.get_by_label("Nume și prenume").fill("Ion Pop"); d.get_by_label(re.compile("^Telefon")).fill("0722 111 222")
+    d.get_by_role("button", name="Adaugă angajat").click(); expect(d).to_be_hidden()
+    a.goto(B+"/lucrari?nou=1"); d=a.get_by_role("dialog"); d.get_by_label("Nume lucrare").fill("Vila Otopeni"); d.get_by_label("Status").select_option("in_desfasurare")
+    d.get_by_role("button", name="Adaugă lucrare").click(); a.wait_for_url(re.compile("/lucrari/"))
+    a.get_by_role("link", name="Alocă angajați").click(); a.locator("button[aria-pressed]").filter(has_text="Ion Pop").click()
+    a.get_by_role("button", name="Salvează alocările").click(); expect(a.get_by_role("heading", name="Alocări salvate")).to_be_visible()
+    a.goto(B+"/angajati"); a.get_by_text("Ion Pop", exact=True).click()
+    a.get_by_role("button", name="Acces în aplicație").click(); d=a.get_by_role("dialog"); d.get_by_role("button", name="Generează codul").click()
+    code=d.locator("div.font-mono").inner_text().strip(); d.get_by_role("button", name="Gata").click()
+    cid=sql("select id from companies where name='Construct Test SRL'")
+    sql(f"insert into absences(company_id, employee_id, type, start_date, end_date, note) select '{cid}', id, 'medical', current_date, current_date + 2, 'răcit' from employees where full_name='Ion Pop' and company_id='{cid}'")
+    # adminul nu poate pune ore
+    a.goto(B+"/pontaje"); a.get_by_role("tab", name="Toate pontajele").click(); expect(a.get_by_text(re.compile("Absențe în perioadă"))).to_be_visible(); expect(a.get_by_text("Concediu medical").first).to_be_visible()
+    ok("adminul vede absența în pontaje")
+    a.get_by_role("button", name=re.compile("Adaugă pontaj|Adaugă ore")).first.click(); d=a.get_by_role("dialog")
+    d.locator("select").nth(0).select_option(label="Ion Pop"); d.locator("select").nth(1).select_option(label="Vila Otopeni")
+    d.get_by_role("button", name="Salvează și aprobă").click(); expect(d.get_by_text(re.compile("este în concediu medical"))).to_be_visible()
+    ok("adminul nu poate pune ore în ziua de concediu"); d.get_by_role("button", name="Renunță").click()
+    # angajatul nu poate pune ore + vede absența
+    i=ctx(); i.goto(B+"/login"); i.get_by_label("Număr de telefon").fill("0722 111 222"); i.get_by_label("Cod de acces").fill(code); i.get_by_role("button", name="Intră în aplicație").click()
+    i.wait_for_url(re.compile("/astazi")); i.goto(B+"/pontaj")
+    expect(i.get_by_text(re.compile("Absențe în perioadă"))).to_be_visible(); expect(i.get_by_text("răcit", exact=False)).to_be_visible(); ok("angajatul vede absența în foaia de pontaj")
+    i.get_by_role("button", name="Adaugă ore lucrate").click(); d=i.get_by_role("dialog"); d.locator("select").nth(0).select_option(label="Vila Otopeni")
+    d.get_by_role("button", name="Trimite pontaj").click(); expect(d.get_by_text(re.compile("este în concediu medical"))).to_be_visible()
+    i.screenshot(path="shots/95_absent_pontaj.png", full_page=True); ok("angajatul nu își poate pune ore în ziua de concediu")
+    # setări combustibil
+    a.goto(B+"/setari")
+    box=a.locator("label").filter(has_text="Verifică combustibilul").locator("input[type=checkbox]")
+    expect(box).to_be_checked(); box.uncheck(); expect(a.get_by_text("Notificările de combustibil sunt oprite.")).to_be_visible()
+    assert sql(f"select fuel_reminders from companies where id='{cid}'") == "f"; box.check(); ok("setarea „Verifică combustibilul” se poate opri/porni")
+    print("PROBLEME:", probs or "niciuna"); b.close(); print("ABSENTE E2E COMPLET")

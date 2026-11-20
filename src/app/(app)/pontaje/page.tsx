@@ -1,4 +1,5 @@
 "use client";
+import { AbsenceStrip } from "@/components/AbsenceStrip";
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { RequireRole } from "@/components/shell";
@@ -11,7 +12,7 @@ import { useSession } from "@/lib/session";
 import { useQuery, must } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
-import { byId, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTimeEntries } from "@/lib/data";
+import { byId, loadAbsences, loadAssignments, loadEmployees, loadProjects, loadTasks, loadTimeEntries } from "@/lib/data";
 import { formatMinutes } from "@/lib/hours";
 import { rangeUtc, todayIn } from "@/lib/time";
 import type { Assignment, TimeEntry } from "@/lib/types";
@@ -56,7 +57,8 @@ function Pontaje() {
     }
     const ids = [...new Set(entries.map((e) => e.assignment_id).filter(Boolean))] as string[];
     const assignments: Assignment[] = ids.length ? (must(await supabase().from("assignments").select("*").in("id", ids)) as Assignment[]) : [];
-    return { entries, assignments };
+    const absences = tab === "aprobare" ? [] : (await loadAbsences(from, to)).filter((a) => !fEmployee || a.employee_id === fEmployee);
+    return { entries, assignments, absences };
   }, [tab, from, to, fEmployee, fProject, fStatus, tz]);
 
   const formAssignments = useQuery(async () => {
@@ -121,6 +123,7 @@ function Pontaje() {
       {(q.error || refs.error) && <ErrorBox message={(q.error || refs.error)!} onRetry={() => { void refs.reload(); void q.reload(); }} />}
       {(q.loading || refs.loading) && !q.data && <Loading />}
 
+      {q.data && refs.data && <AbsenceStrip absences={q.data.absences} employees={employees} from={from} to={to} showEmployee />}
       {q.data && refs.data && (
         entries.length === 0 ? (
           <Empty title={tab === "aprobare" ? "Nu există pontaje care așteaptă aprobare" : "Niciun pontaj în perioada aleasă"}>

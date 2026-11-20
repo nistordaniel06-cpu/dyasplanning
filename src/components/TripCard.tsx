@@ -246,6 +246,7 @@ export function TripCard() {
       <div className="flex items-center gap-2 bg-orange-50 px-4 py-3">
         <Car className="h-5 w-5 text-orange-700" />
         <h2 className="flex-1 font-bold">Foaie de parcurs</h2>
+        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-orange-800" title="Verifică combustibilul">⛽ verifică combustibilul</span>
         {done.length > 0 && <span className="text-sm text-slate-600">Azi: <strong className="tabular-nums">{nf(totalToday)} km</strong></span>}
       </div>
       <div className="space-y-3 p-4">
@@ -286,7 +287,7 @@ export function TripCard() {
               <Navigation className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
               <div className="min-w-0 flex-1">
                 <div className="font-bold">În drum de la {open.from_place}</div>
-                <div className="text-sm text-slate-700 tabular-nums">{vName(open.vehicle_id)} · plecat la {localTime(open.started_at, tz)} cu {nf(open.km_start)} km</div>
+                <div className="text-sm text-slate-700 tabular-nums">⛽ {vName(open.vehicle_id)} · plecat la {localTime(open.started_at, tz)} cu {nf(open.km_start)} km</div>
                 {localDate(open.started_at, tz) !== today && <div className="text-sm font-semibold text-amber-800">Cursa a pornit în altă zi — scrie km la sosire.</div>}
                 {gps && <div className="mt-1 flex items-center gap-1 text-sm text-blue-800"><MapPin className="h-4 w-4" />GPS: <strong className="tabular-nums">{gpsKm.toLocaleString(localeTag())} km</strong>{gpsMsg ? ` · ${gpsMsg}` : ""}</div>}
               </div>
@@ -308,7 +309,7 @@ export function TripCard() {
                   {d.vehicles.map((v) => <option key={v.id} value={v.id}>{v.name}{v.plate ? ` · ${v.plate}` : ""}</option>)}
                 </Select>
               </Field>
-            ) : <p className="text-sm font-semibold">{vName(car)}</p>}
+            ) : <p className="text-sm font-semibold">⛽ {vName(car)}</p>}
             <PlacePicker label="De unde pleci" places={places} value={fromValue} onChange={setFrom} />
             <Field label="Km din bord la plecare" hint={lastKm != null ? `Completat automat: ultimii km ai mașinii (${nf(lastKm)}). Schimbă doar dacă bordul arată altceva.` : "Prima cursă cu această mașină: scrie km de pe bord."}>
               <Input inputMode="numeric" pattern="[0-9]*" placeholder="ex. 20000" value={kmStart} onChange={(e) => setKmStart(e.target.value.replace(/[^\d]/g, ""))}

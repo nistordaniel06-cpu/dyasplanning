@@ -24,6 +24,7 @@ function Setari() {
   const { company, reload, user, tz } = useSession();
   const [name, setName] = useState(company?.name ?? "");
   const [timezone, setTimezone] = useState(company?.timezone ?? "Europe/Bucharest");
+  const [fuel, setFuel] = useState(company?.fuel_reminders !== false);
   const [buffer, setBuffer] = useState(String(company?.travel_buffer_minutes ?? 30));
   const defSched = companySchedule(company);
   const [wStart, setWStart] = useState(defSched.start);
@@ -105,6 +106,14 @@ function Setari() {
           <Button variant="primary" onClick={() => saveSchedule(false)} loading={busy}>Salvează programul</Button>
           <Button onClick={() => saveSchedule(true)} disabled={busy}>Salvează și aplică tuturor angajaților</Button>
         </div>
+      </Card>
+
+      <Card title="⛽ Verifică combustibilul">
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 accent-orange-600" checked={fuel}
+            onChange={async (e) => { const on = e.target.checked; setFuel(on); if (await run(() => supabase().from("companies").update({ fuel_reminders: on }).eq("id", company!.id), on ? "Notificările de combustibil sunt pornite." : "Notificările de combustibil sunt oprite.")) await reload(); else setFuel(!on); }} />
+          <span>Șoferii care lucrează în ziua respectivă primesc de <strong>3 ori pe zi</strong>, în programul lor de lucru, notificarea „⛽ Verifică combustibilul” (la 30 de minute după început, la mijlocul zilei și cu 45 de minute înainte de final).</span>
+        </label>
       </Card>
 
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}

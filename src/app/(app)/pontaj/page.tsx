@@ -1,4 +1,5 @@
 "use client";
+import { AbsenceStrip } from "@/components/AbsenceStrip";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -12,7 +13,7 @@ import { useSession } from "@/lib/session";
 import { useQuery } from "@/lib/useQuery";
 import { supabase } from "@/lib/supabase/client";
 import { humanError } from "@/lib/errors";
-import { byId, loadAssignments, loadEmployees, loadProjects, loadScopeProjectIds, loadTasks, loadTimeEntries } from "@/lib/data";
+import { byId, loadAbsences, loadAssignments, loadEmployees, loadProjects, loadScopeProjectIds, loadTasks, loadTimeEntries } from "@/lib/data";
 import { formatMinutes } from "@/lib/hours";
 import { addDays, rangeUtc, todayIn } from "@/lib/time";
 import type { TimeEntry } from "@/lib/types";
@@ -49,19 +50,20 @@ function Pontaj() {
   const [from, to] = presetRange(preset, tz, custom);
 
   const refs = useQuery(async () => {
-    const [employees, projects, tasks, scope] = await Promise.all([loadEmployees({ includeInactive: true }), loadProjects(), loadTasks(),
-      role === "sef_echipa" ? loadScopeProjectIds() : Promise.resolve(null)]);
+    const [employees, projects, tasks, scope, teamIds] = await Promise.all([loadEmployees({ includeInactive: true }), loadProjects(), loadTasks(),
+      role === "sef_echipa" ? loadScopeProjectIds() : Promise.resolve(null),
+      role === "sef_echipa" ? supabase().rpc("my_review_employee_ids").then((r) => new Set(((r.data ?? []) as unknown[]).map((x) => (typeof x === "string" ? x : (x as { my_review_employee_ids: string }).my_review_employee_ids)))) : Promise.resolve(new Set<string>())]);
     // asignările recente — pentru legarea pontajului de programul planificat
     const t = todayIn(tz);
     const [f, tt] = rangeUtc(addDays(t, -31), addDays(t, 1), tz);
     const assignments = await loadAssignments(f, tt, { employeeId: employee!.id });
-    return { employees, projects, tasks, assignments, scope };
+    return { employees, projects, tasks, assignments, scope, teamIds };
   }, [employee?.id]);
 
   const q = useQuery(async () => {
     const [f, t] = rangeUtc(from, to, tz);
-    const all = await loadTimeEntries(f, t);
-    return all;
+    const [all, absences] = await Promise.all([loadTimeEntries(f, t), loadAbsences(from, to)]);
+    return Object.assign(all, { absences });
   }, [from, to, tz]);
 
   const employees = useMemo(() => byId(refs.data?.employees), [refs.data]);
@@ -112,6 +114,7 @@ function Pontaj() {
       )}
 
       {msg && <div className="mb-3"><Notice tone={msg.tone}>{msg.text}</Notice></div>}
+      {q.data && refs.data && <AbsenceStrip absences={q.data.absences.filter((a) => tab === "mele" ? a.employee_id === employee!.id : a.employee_id !== employee!.id && refs.data!.teamIds.has(a.employee_id))} employees={employees} from={from} to={to} showEmployee={tab === "echipa"} />}
       {(q.error || refs.error) && <ErrorBox message={(q.error || refs.error)!} onRetry={() => { void refs.reload(); void q.reload(); }} />}
       {(q.loading || refs.loading) && !q.data && <Loading />}
       {q.data && refs.data && list.length === 0 && (
