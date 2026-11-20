@@ -185,6 +185,9 @@ export interface TimeEntry {
   submitted_at: string | null;
   reviewed_at: string | null;
   created_at: string;
+  validated_by?: string | null;
+  validated_at?: string | null;
+  validated_role?: "admin" | "sef_echipa" | null;
   source?: "manual" | "buton" | "offline";
   start_lat?: number | null; start_lon?: number | null; start_accuracy?: number | null; start_address?: string | null;
   end_lat?: number | null; end_lon?: number | null; end_accuracy?: number | null; end_address?: string | null;
@@ -199,6 +202,21 @@ export interface TimeEntryHistory {
   old_data: Partial<TimeEntry> | null;
   new_data: Partial<TimeEntry> | null;
   changed_at: string;
+}
+
+export interface ProjectExtra {
+  id: string;
+  company_id: string;
+  project_id: string;
+  extra_date: string;
+  body: string;
+  photos: string[];
+  status: "nou" | "confirmat" | "respins";
+  admin_note: string | null;
+  author_user_id: string | null;
+  author_employee_id: string | null;
+  author_name: string | null;
+  created_at: string;
 }
 
 export interface Note {

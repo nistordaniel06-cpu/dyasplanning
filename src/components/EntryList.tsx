@@ -82,7 +82,7 @@ export function EntryList({ entries, employees, projects, tasks, assignments, ac
                   <td className="px-3 py-2.5 text-right tabular-nums">{e.break_minutes} min</td>
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{formatMinutes(e.worked_minutes)}</td>
                   <td className={cx("px-3 py-2.5 text-right tabular-nums", p !== null && p !== e.worked_minutes ? "text-amber-800" : "text-slate-500")}>{p === null ? "—" : formatMinutes(p)}</td>
-                  <td className="px-3 py-2.5"><StatusBadge s={ENTRY_STATUS[e.status]} /></td>
+                  <td className="px-3 py-2.5"><StatusBadge s={ENTRY_STATUS[e.status]} />{e.validated_role === "sef_echipa" && e.status === "trimis" && <div className="mt-1 text-xs font-semibold text-green-700">✓ validat de șef</div>}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex justify-end gap-1">
                       {actions(e)}
@@ -107,6 +107,7 @@ export function EntryList({ entries, employees, projects, tasks, assignments, ac
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold">{showEmployee ? employees.get(e.employee_id)?.full_name : shortDate(localDate(e.started_at, tz))}</span>
                     <StatusBadge s={ENTRY_STATUS[e.status]} />
+                    {e.validated_role === "sef_echipa" && e.status === "trimis" && <span className="text-xs font-semibold text-green-700">✓ validat de șef</span>}
                   </div>
                   <div className="text-sm text-slate-700">{projects.get(e.project_id)?.name}{e.task_id ? ` · ${tasks.get(e.task_id)?.name}` : ""}</div>
                   <div className="mt-1 text-sm tabular-nums text-slate-600">

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { RequireRole } from "@/components/shell";
@@ -78,7 +79,8 @@ function Echipa() {
           <h2 className="pt-2 text-lg font-semibold">Lucrări și progresul misiunilor</h2>
           {ledProjects.length === 0 && <Empty title="Nicio lucrare activă" />}
           {ledProjects.map((p) => (
-            <Card key={p.id} title={<span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ background: p.color }} />{p.name}</span>} action={<StatusBadge s={PROJECT_STATUS[p.status]} />}>
+            <Card key={p.id} title={<span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ background: p.color }} />{p.name}</span>}
+              action={<span className="flex items-center gap-2"><Link href={`/extra/${p.id}`} className="text-sm font-semibold text-orange-700">Lucru extra →</Link><StatusBadge s={PROJECT_STATUS[p.status]} /></span>}>
               <ul className="space-y-3">
                 {d.tasks.filter((t) => t.project_id === p.id).map((t) => (
                   <li key={t.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">

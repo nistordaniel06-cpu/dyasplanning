@@ -11,7 +11,7 @@ type Row = Record<string, unknown>;
 /** Tabelele firmei (RLS lasă adminul să le citească pe toate). */
 export const TABLES = [
   "companies", "teams", "employees", "employee_private", "memberships", "projects", "tasks", "assignments",
-  "time_entries", "time_entry_photos", "absences", "vehicles", "trips", "odometer_readings", "extra_trips", "notes",
+  "time_entries", "time_entry_photos", "absences", "vehicles", "trips", "odometer_readings", "extra_trips", "notes", "project_extras",
   "chat_channels", "chat_messages",
 ] as const;
 export type TableName = (typeof TABLES)[number];
@@ -44,7 +44,7 @@ export async function collect(onProgress?: (msg: string) => void): Promise<Backu
 export const LABEL: Record<TableName, string> = {
   companies: "Firma", teams: "Echipe", employees: "Angajați", employee_private: "Adrese", memberships: "Conturi",
   projects: "Lucrări", tasks: "Misiuni", assignments: "Program", time_entries: "Pontaje", time_entry_photos: "Poze pontaj",
-  absences: "Absențe", vehicles: "Mașini", trips: "Foaie de parcurs", odometer_readings: "Km mașini", extra_trips: "Km extra", notes: "Observații",
+  absences: "Absențe", vehicles: "Mașini", trips: "Foaie de parcurs", project_extras: "Lucrări extra", odometer_readings: "Km mașini", extra_trips: "Km extra", notes: "Observații",
   chat_channels: "Conversații", chat_messages: "Mesaje chat",
 };
 
@@ -104,6 +104,9 @@ export function sheets(d: BackupData, tz: string): Sheet[] {
       rows: [...(d.trips ?? [])].sort((a, b) => s(a.started_at).localeCompare(s(b.started_at))).map((t) => [ro(t.trip_date), Number(t.seq), Number(t.km_start), t.km_end == null ? "" : Number(t.km_end),
         t.km_end == null ? "" : Number(t.km_end) - Number(t.km_start), s(t.from_place), s(t.to_place), s(t.purpose), name(emp, t.employee_id, "full_name"),
         name(veh, t.vehicle_id), name(veh, t.vehicle_id, "plate"), t.private ? "Personal" : "Serviciu", localTime(s(t.started_at), tz), t.ended_at ? localTime(s(t.ended_at), tz) : ""]) },
+    { name: "Lucrări extra", columns: ["Data", "Lucrare", "Ce s-a făcut în plus", "Poze", "Stare", "Notă administrator", "Adăugat de"], widths: [12, 30, 60, 6, 12, 30, 22],
+      rows: sortBy(d.project_extras ?? [], "created_at").map((x) => [ro(x.extra_date), name(proj, x.project_id), s(x.body), ((x.photos as string[] | null) ?? []).length,
+        x.status === "confirmat" ? "Confirmat" : x.status === "respins" ? "Nu se ia în calcul" : "De verificat", s(x.admin_note), s(x.author_name)]) },
     { name: "Km extra", columns: ["Data", "Mașina", "Nr. înmatriculare", "Șofer", "Km", "Sursa", "Început", "Sfârșit", "Traseu / motiv"], widths: [12, 22, 16, 24, 8, 8, 8, 8, 40],
       rows: sortBy(d.extra_trips ?? [], "created_at").map((x) => [ro(x.trip_date), name(veh, x.vehicle_id), name(veh, x.vehicle_id, "plate"), name(emp, x.employee_id, "full_name"),
         Number(x.km), x.source === "gps" ? "GPS" : "manual", x.started_at ? localTime(s(x.started_at), tz) : "", x.ended_at ? localTime(s(x.ended_at), tz) : "", s(x.note)]) },
@@ -147,8 +150,9 @@ export async function zipBlob(d: BackupData, tz: string, companyName: string, op
     const list = [
       ...d.time_entry_photos.map((p) => ({ bucket: "pontaj", path: s(p.path) })),
       ...d.chat_messages.filter((m) => m.attachment_path).map((m) => ({ bucket: "chat", path: s(m.attachment_path) })),
+      ...(d.project_extras ?? []).flatMap((x) => ((x.photos as string[] | null) ?? []).map((p) => ({ bucket: "lucrari", path: p }))),
     ];
-    for (const bucket of ["pontaj", "chat"]) {
+    for (const bucket of ["pontaj", "chat", "lucrari"]) {
       const paths = list.filter((x) => x.bucket === bucket).map((x) => x.path);
       for (let i = 0; i < paths.length; i += 50) {
         const chunk = paths.slice(i, i + 50);
@@ -181,6 +185,6 @@ export async function zipBlob(d: BackupData, tz: string, companyName: string, op
 }
 
 export function counts(d: BackupData): { label: string; n: number }[] {
-  return (["employees", "projects", "tasks", "assignments", "time_entries", "absences", "vehicles", "trips", "odometer_readings", "extra_trips", "notes", "chat_messages", "time_entry_photos"] as TableName[])
+  return (["employees", "projects", "tasks", "assignments", "time_entries", "absences", "vehicles", "trips", "odometer_readings", "extra_trips", "notes", "project_extras", "chat_messages", "time_entry_photos"] as TableName[])
     .map((t) => ({ label: LABEL[t], n: d[t].length }));
 }

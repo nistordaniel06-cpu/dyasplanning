@@ -1,4 +1,5 @@
 "use client";
+import { ReviewReminder } from "@/components/ReviewReminder";
 import { localeTag } from "@/lib/lang";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -71,6 +72,7 @@ function Dashboard() {
         </>} />
 
       <AppSetupCard compact />
+      <ReviewReminder />
       {company && Date.now() - new Date(company.created_at).getTime() > 14 * 864e5
         && (!company.last_backup_at || Date.now() - new Date(company.last_backup_at).getTime() > 30 * 864e5) && (
         <Link href="/setari" className="block rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 hover:bg-amber-100">

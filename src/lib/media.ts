@@ -34,7 +34,7 @@ export function extFor(type: string): string {
   return "bin";
 }
 
-export async function upload(bucket: "pontaj" | "chat", path: string, blob: Blob): Promise<void> {
+export async function upload(bucket: "pontaj" | "chat" | "lucrari", path: string, blob: Blob): Promise<void> {
   const contentType = (blob.type || "application/octet-stream").split(";")[0];
   const { error } = await supabase().storage.from(bucket).upload(path, blob, { contentType, upsert: false });
   if (error) throw error;
@@ -42,7 +42,7 @@ export async function upload(bucket: "pontaj" | "chat", path: string, blob: Blob
 
 const cache = new Map<string, { url: string; exp: number }>();
 /** Linkuri temporare (1 oră) pentru fișiere private. */
-export async function signedUrls(bucket: "pontaj" | "chat", paths: string[]): Promise<Record<string, string>> {
+export async function signedUrls(bucket: "pontaj" | "chat" | "lucrari", paths: string[]): Promise<Record<string, string>> {
   const now = Date.now(), out: Record<string, string> = {}, missing: string[] = [];
   for (const p of paths) {
     const c = cache.get(bucket + p);

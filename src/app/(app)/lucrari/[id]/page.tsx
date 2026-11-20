@@ -1,4 +1,5 @@
 "use client";
+import { ProjectExtras } from "@/components/ProjectExtras";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -178,6 +179,9 @@ function Lucrare() {
                 })}
               </ul>
             )}
+          </Card>
+          <Card title="Lucrări extra (în afara proiectului)" action={<Link href={`/extra/${id}`} className="text-sm font-semibold text-orange-700">Deschide →</Link>}>
+            <ProjectExtras projectId={id} />
           </Card>
           <Card title="Observații">
             <div className="space-y-2">

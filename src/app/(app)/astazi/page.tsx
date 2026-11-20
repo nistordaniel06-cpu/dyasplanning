@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Clock, MapPin, Navigation, Phone, Users } from "lucide-react";
+import { Clock, MapPin, Navigation, Phone, Users, ClipboardPlus } from "lucide-react";
 import { NeedsEmployee } from "@/components/shell";
 import { Badge, Button, Empty, ErrorBox, Loading, PageHeader, ProgressBar, StatusBadge } from "@/components/ui";
 import { TaskProgressDialog } from "@/components/TaskProgressDialog";
 import { TripCard } from "@/components/TripCard";
+import { ReviewReminder } from "@/components/ReviewReminder";
 import { ClockCard } from "@/components/ClockCard";
 import { AppSetupCard } from "@/components/AppSetup";
 import { useSession } from "@/lib/session";
@@ -45,6 +46,7 @@ function Astazi() {
     <div className="mx-auto max-w-2xl">
       <PageHeader title={`Bună, ${employee!.full_name.split(" ")[0]}!`} subtitle={prettyDate(today)} />
       <AppSetupCard compact />
+      <ReviewReminder />
       <TripCard />
       {d && <ClockCard assignments={mine} projects={projects} tasks={tasks} onChanged={q.reload} />}
       {q.error && <ErrorBox message={q.error} onRetry={q.reload} />}
@@ -100,6 +102,7 @@ function Astazi() {
                 )}
               </div>
               <div className="grid gap-2 border-t border-slate-100 p-3 sm:grid-cols-3">
+                <Link href={`/extra/${a.project_id}`}><Button size="lg" className="w-full"><ClipboardPlus className="h-5 w-5" />Lucru extra</Button></Link>
                 {nav && <a href={nav} target="_blank" rel="noreferrer"><Button size="lg" className="w-full"><Navigation className="h-5 w-5" />Navigație</Button></a>}
                 {task && <Button size="lg" onClick={() => setProgressTask(task)}>Progres</Button>}
                 {entry ? (

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
-  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, LifeBuoy, ShieldCheck, Sun, User, Users, X,
+  BarChart3, Bell, CalendarDays, Car, CalendarRange, ClipboardCheck, Clock, Hammer, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, LifeBuoy, ShieldCheck, Sun, User, Users, X, CheckCheck,
 } from "lucide-react";
 import { UnreadProvider, useUnread } from "@/lib/unread";
 import { useServiceWorker } from "./AppSetup";
@@ -31,6 +31,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/lucrari", label: "Lucrări", icon: Hammer },
   { href: "/angajati", label: "Angajați", icon: Users },
   { href: "/pontaje", label: "Pontaje", icon: ClipboardCheck },
+  { href: "/validare", label: "Validare zi", icon: CheckCheck },
   { href: "/rapoarte", label: "Rapoarte", icon: BarChart3 },
   { href: "/masini", label: "Mașini", icon: Car },
   { href: "/utilizare", label: "Utilizare", icon: Activity },
@@ -47,6 +48,7 @@ const LEADER_NAV: NavItem[] = [
   { href: "/astazi", label: "Astăzi", icon: Sun },
   { href: "/planning", label: "Planning", icon: CalendarRange },
   { href: "/echipa", label: "Echipa", icon: Users },
+  { href: "/validare", label: "Validare zi", icon: CheckCheck },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/pontaj", label: "Pontaj", icon: Clock },
   { href: "/program", label: "Programul meu", icon: CalendarDays },
