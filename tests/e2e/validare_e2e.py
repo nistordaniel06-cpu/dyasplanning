@@ -77,7 +77,7 @@ with sync_playwright() as p:
     i.get_by_role("button", name="Salvează").click()
     expect(i.get_by_text("Clientul a cerut încă o priză în dormitor")).to_be_visible(); expect(i.get_by_text("De verificat")).to_be_visible()
     expect(i.locator("img[alt='Poză de la lucrare']")).to_have_count(1); i.screenshot(path="shots/91_extra_angajat.png", full_page=True); ok("angajatul adaugă lucrare extra cu poză")
-    a.goto(B+f"/lucrari/{pid}"); expect(a.get_by_text("Clientul a cerut încă o priză în dormitor")).to_be_visible()
+    a.goto(B+f"/lucrari/{pid}"); a.get_by_role("link", name="Lucru extra").click(); expect(a.get_by_text("Clientul a cerut încă o priză în dormitor")).to_be_in_viewport()
     a.get_by_role("button", name="Confirmă").click(); expect(a.get_by_text("Confirmat", exact=True)).to_be_visible()
     a.screenshot(path="shots/92_extra_admin.png", full_page=True); ok("adminul vede și confirmă lucrarea extra")
     print("PROBLEME:", probs or "niciuna"); b.close(); print("VALIDARE E2E COMPLET")

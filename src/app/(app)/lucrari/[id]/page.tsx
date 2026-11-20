@@ -3,7 +3,7 @@ import { ProjectExtras } from "@/components/ProjectExtras";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, MapPin, Navigation, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation, Pencil, Phone, Plus, Trash2, ClipboardPlus } from "lucide-react";
 import { RequireRole } from "@/components/shell";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Modal, PageHeader, ProgressBar, Select, StatusBadge, Textarea } from "@/components/ui";
 import { ProjectForm } from "@/components/ProjectForm";
@@ -85,7 +85,8 @@ function Lucrare() {
       <PageHeader title={p.name}
         subtitle={<span className="flex flex-wrap items-center gap-2"><StatusBadge s={PROJECT_STATUS[p.status]} />{p.client_name && <span>Client: {p.client_name}</span>}</span>}
         actions={<>
-          {nav && <a href={nav} target="_blank" rel="noreferrer"><Button><Navigation className="h-4 w-4" />Navigație</Button></a>}
+<a href="#lucru-extra"><Button><ClipboardPlus className="h-4 w-4" />Lucru extra</Button></a>
+                    {nav && <a href={nav} target="_blank" rel="noreferrer"><Button><Navigation className="h-4 w-4" />Navigație</Button></a>}
           <Button onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" />Modifică</Button>
           <Link href={`/planning/aloca?lucrare=${p.id}`}><Button variant="primary"><Plus className="h-4 w-4" />Alocă angajați</Button></Link>
         </>} />
@@ -127,6 +128,11 @@ function Lucrare() {
             )}
           </Card>
 
+          <div id="lucru-extra" className="scroll-mt-20">
+            <Card title="Lucru extra (în afara proiectului)">
+              <ProjectExtras projectId={id} />
+            </Card>
+          </div>
           <Card title="Program (următoarele alocări)">
             {upcoming.length === 0 ? <p className="text-sm text-slate-600">Nicio alocare viitoare.</p> : (
               <ul className="divide-y divide-slate-100 text-sm">
@@ -179,9 +185,6 @@ function Lucrare() {
                 })}
               </ul>
             )}
-          </Card>
-          <Card title="Lucrări extra (în afara proiectului)" action={<Link href={`/extra/${id}`} className="text-sm font-semibold text-orange-700">Deschide →</Link>}>
-            <ProjectExtras projectId={id} />
           </Card>
           <Card title="Observații">
             <div className="space-y-2">
