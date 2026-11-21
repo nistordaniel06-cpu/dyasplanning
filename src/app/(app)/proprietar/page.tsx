@@ -673,8 +673,7 @@ function ActivityRow({ a, tone, onUser }: { a: Activity; tone: "red" | "green" |
               {(it.changes ?? []).map((c, k) => (
                 <div key={k} className="mt-0.5 flex flex-wrap gap-x-1 text-slate-600">
                   <span className="font-medium">{c.f}:</span>
-                  <span className="line-through decoration-slate-400">{c.from}</span>
-                  <span>→</span>
+                  {c.from !== "—" && <><span className="line-through decoration-slate-400">{c.from}</span><span>→</span></>}
                   <span className="font-medium text-slate-900">{c.to}</span>
                 </div>
               ))}

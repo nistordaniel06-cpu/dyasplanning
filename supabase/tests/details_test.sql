@@ -8,7 +8,7 @@ set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 update employees set phone = '+40 799000111', trade = 'Faianțar' where id = tst.id('ion');
 reset role;
-select tst.assert((select summary from owner_activity where entity = 'employees' order by id desc limit 1) = 'Dan Admin a modificat angajatul „Ion Popescu” (telefon, meserie)', 'rezumat cu numele și câmpurile');
+select tst.assert((select summary from owner_activity where entity = 'employees' order by id desc limit 1) = 'Dan Admin a modificat angajatul „Ion Popescu” — a schimbat: telefon, meserie', 'rezumat cu numele și câmpurile');
 select tst.assert((select details->0->'changes'->1->>'to' from owner_activity where entity = 'employees' order by id desc limit 1) = 'Faianțar', 'valoarea nouă');
 -- salvare fără nicio schimbare → nu apare
 set role authenticated;
